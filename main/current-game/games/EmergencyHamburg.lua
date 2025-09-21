@@ -42,7 +42,7 @@ return function(Tab, Luna, Window, ctx)
         end
     end
 
-    -- Beispiel-Scripts:
+    -- Emergency Hamburg Scripts:
     addScript(
         "Vortex",
         'game:HttpGet("https://raw.githubusercontent.com/ItemTo/VortexAutorob/refs/heads/main/release")',
