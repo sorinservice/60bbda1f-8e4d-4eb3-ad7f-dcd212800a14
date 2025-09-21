@@ -4,23 +4,20 @@ return function(Tab, Luna, Window)
     Tab:CreateParagraph({
         Title = "Main Credits",
         Text = table.concat({
-            "Nebula Softworks — Luna UI (Design & Code)",
-            "Luna Executor — Original UI",
-            "Luna Interface Suite",
-            "by Nebula Softworks"
+            "Nebula Softworks — Luna UI (Design & Code)"
         }, "\n")
     })
 
     Tab:CreateParagraph({
-        Title = "Project",
+        Title = "SorinHub Credits",
         Text = table.concat({
-            "SorinServices — customizing on Luna UI",
+            "SorinHub by SorinServices",
             "invented by EndOfCircuit"
         }, "\n")
     })
 
     Tab:CreateLabel({
-        Text = "Luna Interface Suite — by Nebula Softworks",
+        Text = "SorinHub Scriptloader - by SorinServices",
         Style = 2
     })
 end
