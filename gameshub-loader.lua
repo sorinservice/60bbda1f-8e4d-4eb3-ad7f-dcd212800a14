@@ -190,6 +190,8 @@ local Window = Luna:CreateWindow({
 	Tabs.Premium:BuildThemeSection()]]
 end
 
+print("Luna Hub, remastered by SorinServices [version 0]")
+
 -- THIS IS THE DEBUG DEMO, ONLY USED WHEN TESTING NEW ELEMENTS AND CODE
 --[[if isStudio then
     window = Luna:CreateWindow({LoadingEnabled = false})
