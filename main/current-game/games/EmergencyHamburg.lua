@@ -1,7 +1,8 @@
+-- EmergencyHamburg.lua
 return function(Tab, Luna, Window, ctx)
     Tab:CreateSection(ctx.name .. " – Scripts")
 
-    -- Hilfsfunktion für ein Script-Item
+    -- Helper to add one script button
     local function addScript(name, loadstringCode, opts)
         opts = opts or {}
         local display = name
@@ -9,49 +10,66 @@ return function(Tab, Luna, Window, ctx)
             display = display .. " — " .. opts.subtext
         end
 
-        -- Style: 1=normal, 2=info, 3=warning/error
-        local style = opts.style or 1
-
         Tab:CreateButton({
             Name = display,
             Description = opts.description or "Execute this script",
             Callback = function()
                 local ok, err = pcall(function()
+                    -- loadstringCode must be the inner code, e.g. 'game:HttpGet("URL")'
                     loadstring(loadstringCode)()
                 end)
                 if ok then
                     Luna:Notification({
-                        Title = name,
-                        Icon = "check_circle",
-                        ImageSource = "Material",
+                        Title = name, Icon = "check_circle", ImageSource = "Material",
                         Content = "Executed successfully!"
                     })
                 else
                     Luna:Notification({
-                        Title = name,
-                        Icon = "error",
-                        ImageSource = "Material",
+                        Title = name, Icon = "error", ImageSource = "Material",
                         Content = "Error: " .. tostring(err)
                     })
                 end
             end
         })
 
-        if style ~= 1 then
-            Tab:CreateLabel({ Text = "Status: " .. (opts.subtext or "custom"), Style = style })
+        if opts.recommended then
+            -- Green/info tag under the button (Style 2)
+            Tab:CreateLabel({ Text = "Recommended by Sorin", Style = 2 })
+        elseif opts.style then
+            Tab:CreateLabel({ Text = opts.styleText or "Status", Style = opts.style })
         end
     end
 
-    -- Emergency Hamburg Scripts:
-    addScript(
-        "Vortex",
-        'game:HttpGet("https://raw.githubusercontent.com/ItemTo/VortexAutorob/refs/heads/main/release")',
-        { subtext = "Recommended by Sorin", style = 2 }
-    )
+    -- Define your scripts here (any order) …
+    local scripts = {
+        {
+            name = "AirFlow Hub",
+            code = 'game:HttpGet("https://example.com/airflow.lua")',
+        },
+        {
+            name = "Nova Hub",
+            code = 'game:HttpGet("http://novaw.xyz/MainScript.lua")',
+        },
+        {
+            name = "Vortex Hub",
+            code = 'game:HttpGet("https://raw.githubusercontent.com/ItemTo/VortexAutorob/refs/heads/main/release")',
+            recommended = true,                     -- 💚 highlight
+            subtext = "Recommended by Sorin",
+        },
+        {
+            name = "Simple Script",
+            code = 'game:HttpGet("https://example.com/simple.lua")',
+            subtext = "Just a demo entry",
+        },
+    }
 
-    addScript(
-        "Nova Hub",
-        'game:HttpGet("http://novaw.xyz/MainScript.lua")',
-        { subtext = nil } -- kein Subtext
-    )
+    -- Alphabetical sort by name
+    table.sort(scripts, function(a, b)
+        return a.name:lower() < b.name:lower()
+    end)
+
+    -- Render
+    for _, s in ipairs(scripts) do
+        addScript(s.name, s.code, s)
+    end
 end
