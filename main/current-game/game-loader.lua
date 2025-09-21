@@ -60,7 +60,7 @@ return function(Tab, Luna, Window)
 
     -- Manager laden
     Tab:CreateSection("Resolver")
-    local managerRaw = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua"
+    local managerRaw = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/current-game/manager.lua"
 
     local src, e1 = safeHttpGet(managerRaw)
     if not src then
@@ -78,7 +78,7 @@ return function(Tab, Luna, Window)
     local entry = manager.registry[placeId]
     if not entry then
         Tab:CreateLabel({
-            Text = "Kein Eintrag für dieses Spiel. Füge PlaceId in manager.lua hinzu.",
+            Text = "Kein Eintrag für dieses Spiel.",
             Style = 2
         })
         -- Dev-Hilfe: Template-Block zum Kopieren
