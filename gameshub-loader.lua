@@ -1,7 +1,7 @@
 --// Sorin Loader (Luna-UI)
 local HttpService = game:GetService("HttpService")
 
--- 1) Luna-UI richtig laden (korrekte RAW-URL!)
+-- 1) Luna-UI laden
 local lunaUrl = "https://raw.githubusercontent.com/sorinservice/luna-lib-remastered/main/luna-ui.lua"
 local Luna = loadstring(game:HttpGet(lunaUrl))()
 
@@ -17,19 +17,19 @@ local Window = Luna:CreateWindow({
         RootFolder = nil,
         ConfigFolder = "SorinHubConfig"
     },
-    KeySystem = false, -- wenn true, dann KeySettings ausfüllen
+    KeySystem = true,
     KeySettings = {
         Title = "SorinHub Key",
         Subtitle = "Key System",
         Note = "Enter your key",
         SaveInRoot = false,
         SaveKey = true,
-        Key = {"SorinHub"},
+        Key = {"SorinServiceHub"},
         SecondAction = { Enabled = false, Type = "Link", Parameter = "" }
     }
 })
 
--- Optional: kleine Willkommensmeldung
+-- Notification
 Luna:Notification({
     Title = "SorinHub",
     Icon = "sparkle",
@@ -37,13 +37,13 @@ Luna:Notification({
     Content = "UI initialized successfully."
 })
 
--- 3) Tabs als Remote-Module laden (deine Repo-Links)
+-- 3) Tab-URLs (Repo-Links)
 local TABS = {
-    ["Main"]    = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/MainTab.lua",
-    ["Credits"] = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/Credits.lua",
+    Credits   = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/Credits.lua",
+    Developer = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/Developer.lua"
 }
 
--- Hilfsfunktionen
+-- Hilfsfunktion zum sicheren Laden
 local function safeRequire(url)
     local final = url .. "?cb=" .. tostring(os.time()) .. tostring(math.random(1000,9999))
     local ok, body = pcall(function() return game:HttpGet(final) end)
@@ -57,24 +57,30 @@ local function safeRequire(url)
     return res
 end
 
-local function attachTab(name, url, icon)
-    local Tab = Window:CreateTab({ Name = name, Icon = icon or "sparkle", ImageSource = "Material", ShowTitle = true })
+-- AttachTab (einzeln aufrufbar)
+local function attachTab(name, url, icon, imageSource, showTitle)
+    local Tab = Window:CreateTab({
+        Name = name,
+        Icon = icon or "sparkle",
+        ImageSource = imageSource or "Material",
+        ShowTitle = (showTitle ~= false)
+    })
+
     local mod, err = safeRequire(url)
     if not mod then
         Tab:CreateLabel({ Text = "Error loading '"..name.."': "..tostring(err), Style = 3 })
         return
     end
-    -- Erwartet: das Modul gibt eine Funktion zurück: function(Tab, Luna, Window) ... end
+
     local ok, msg = pcall(mod, Tab, Luna, Window)
     if not ok then
         Tab:CreateLabel({ Text = "Init error '"..name.."': "..tostring(msg), Style = 3 })
     end
 end
 
--- 4) Tabs laden
-for name, url in pairs(TABS) do
-    attachTab(name, url)
-end
+-- 4) Tabs manuell laden
+attachTab("Credits",   TABS.Credits,   "emoji_events", "Material", true)
+attachTab("Developer", TABS.Developer, "terminal",     "Material", true)
 
--- 5) (optional) Home-Tab der Lib
+-- 5) Home-Tab
 Window:CreateHomeTab()
