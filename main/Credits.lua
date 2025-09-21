@@ -13,10 +13,14 @@ return function(Tab, Luna, Window)
 
     Tab:CreateParagraph({
         Title = "Project",
-        Text = "SorinServices — customizing on Luna UI",
-               "invented by EndOfCircuit"
+        Text = table.concat({
+            "SorinServices — customizing on Luna UI",
+            "invented by EndOfCircuit"
+        }, "\n")
     })
 
-
-    Tab:CreateLabel({ Text = "Luna Interface Suite — by Nebula Softworks", Style = 2 })
+    Tab:CreateLabel({
+        Text = "Luna Interface Suite — by Nebula Softworks",
+        Style = 2
+    })
 end
