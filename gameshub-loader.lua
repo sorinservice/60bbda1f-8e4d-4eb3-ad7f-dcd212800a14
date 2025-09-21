@@ -1,108 +1,80 @@
--- Sorin Loader (Luna-UI) - bereinigt
+--// Sorin Loader (Luna-UI)
 local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
 
--- URL zur Luna-UI (ersetze falls nötig)
-local LUNA_URL = "https://raw.githubusercontent.com/sorinservice/luna-lib-remastered/refs/heads/main/luna-ui.lua"
+-- 1) Luna-UI richtig laden (korrekte RAW-URL!)
+local lunaUrl = "https://raw.githubusercontent.com/sorinservice/luna-lib-remastered/main/luna-ui.lua"
+local Luna = loadstring(game:HttpGet(lunaUrl))()
 
-local function safeHttpGet(url)
-    local ok, res = pcall(function() return game:HttpGet(url) end)
-    if not ok then return nil, res end
-    return res, nil
-end
-
-local lunaBody, err = safeHttpGet(LUNA_URL)
-if not lunaBody then
-    warn("Failed to download Luna-UI: " .. tostring(err))
-    return
-end
-
-local fn, loadErr = loadstring(lunaBody)
-if not fn then
-    warn("Failed to load Luna-UI code: " .. tostring(loadErr))
-    return
-end
-
-local ok, Luna = pcall(fn)
-if not ok then
-    warn("Failed to run Luna-UI: " .. tostring(Luna))
-    return
-end
-
--- Erstelle Hauptfenster
+-- 2) Fenster erstellen
 local Window = Luna:CreateWindow({
     Name = "Sorin Project",
-    Subtitle = "powered by Luna",
-    LogoID = "6031097225", -- Icon (optional ersetzen)
+    Subtitle = "Roblox Script Hub",
+    LogoID = "77656423525793",
     LoadingEnabled = true,
     LoadingTitle = "Sorin Loader",
-    LoadingSubtitle = "Initializing...",
-    KeySystem = false,
-    -- Falls du KeySystem verwenden willst, aktiviere hier und passe KeySettings an
-    -- KeySettings = { ... }
+    LoadingSubtitle = "by SorinService",
+    ConfigSettings = {
+        RootFolder = nil,
+        ConfigFolder = "SorinHubConfig"
+    },
+    KeySystem = false, -- wenn true, dann KeySettings ausfüllen
+    KeySettings = {
+        Title = "SorinHub Key",
+        Subtitle = "Key System",
+        Note = "Enter your key",
+        SaveInRoot = false,
+        SaveKey = true,
+        Key = {"SorinHub"},
+        SecondAction = { Enabled = false, Type = "Link", Parameter = "" }
+    }
 })
 
--- Optional: kleine Willkommens-Notification (website anpassen oder entfernen)
-local website = "https://discord.gg/YOUR_LINK" -- <- anpassen oder leer lassen
-pcall(function()
-    Luna:Notification({
-        Title = "Welcome",
-        Icon = "sparkle",
-        ImageSource = "Material",
-        Content = "Welcome to the Sorin Project UI. Visit: " .. website
-    })
-end)
+-- Optional: kleine Willkommensmeldung
+Luna:Notification({
+    Title = "SorinHub",
+    Icon = "sparkle",
+    ImageSource = "Material",
+    Content = "UI initialized successfully."
+})
 
--- Tabs-Definition (ersetze die raw URLs durch deine)
+-- 3) Tabs als Remote-Module laden (deine Repo-Links)
 local TABS = {
-    Main    = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/MainTab.lua",
-    Credits = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/Credits.lua"
+    ["Main"]    = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/MainTab.lua",
+    ["Credits"] = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/Credits.lua",
 }
 
-local function safeRequireURL(url)
-    local finalUrl = url .. "?cb=" .. tostring(os.time()) .. tostring(math.random(1000,9999))
-    local body, err = safeHttpGet(finalUrl)
-    if not body then return nil, err end
-    local f, e = loadstring(body)
-    if not f then return nil, e end
-    local ok, res = pcall(f)
-    if not ok then return nil, res end
-    return res, nil
+-- Hilfsfunktionen
+local function safeRequire(url)
+    local final = url .. "?cb=" .. tostring(os.time()) .. tostring(math.random(1000,9999))
+    local ok, body = pcall(function() return game:HttpGet(final) end)
+    if not ok then return nil, "HttpGet failed: " .. tostring(body) end
+
+    local fn, lerr = loadstring(body)
+    if not fn then return nil, "loadstring failed: " .. tostring(lerr) end
+
+    local ok2, res = pcall(fn)
+    if not ok2 then return nil, "module pcall failed: " .. tostring(res) end
+    return res
 end
 
--- Erstelle Home Tab (sofern Luna das anbietet)
-pcall(function() Window:CreateHomeTab() end)
-
-local function attachTab(name, url, options)
-    local okTab, Tab = pcall(function()
-        return Window:CreateTab({
-            Name = name,
-            Icon = (options and options.Icon) or "sparkle",
-            ImageSource = (options and options.ImageSource) or "Material",
-            ShowTitle = (options and options.ShowTitle) or false
-        })
-    end)
-    if not okTab or not Tab then
-        warn("Failed to create Tab: ".. tostring(name))
-        return
-    end
-
-    local mod, err = safeRequireURL(url)
+local function attachTab(name, url, icon)
+    local Tab = Window:CreateTab({ Name = name, Icon = icon or "sparkle", ImageSource = "Material", ShowTitle = true })
+    local mod, err = safeRequire(url)
     if not mod then
-        Tab:CreateLabel({ Text = "Error loading tab: " .. tostring(err), Style = 3 })
+        Tab:CreateLabel({ Text = "Error loading '"..name.."': "..tostring(err), Style = 3 })
         return
     end
-
-    local ok2, runErr = pcall(mod, Tab, Luna)
-    if not ok2 then
-        Tab:CreateLabel({ Text = "Tab init failed: " .. tostring(runErr), Style = 3 })
-        return
+    -- Erwartet: das Modul gibt eine Funktion zurück: function(Tab, Luna, Window) ... end
+    local ok, msg = pcall(mod, Tab, Luna, Window)
+    if not ok then
+        Tab:CreateLabel({ Text = "Init error '"..name.."': "..tostring(msg), Style = 3 })
     end
 end
 
--- Lade alle Tabs
+-- 4) Tabs laden
 for name, url in pairs(TABS) do
     attachTab(name, url)
 end
 
-print("Sorin Loader finished.")
+-- 5) (optional) Home-Tab der Lib
+Window:CreateHomeTab()
