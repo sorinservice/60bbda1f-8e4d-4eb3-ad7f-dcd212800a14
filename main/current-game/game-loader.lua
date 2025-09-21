@@ -1,119 +1,58 @@
+-- game-loader.lua
+local function fetchModule(url)
+    local final = url .. "?cb=" .. tostring(os.time()) .. tostring(math.random(1000, 9999))
+    local ok, body = pcall(function() return game:HttpGet(final) end)
+    if not ok then return nil, "HttpGet failed: " .. tostring(body) end
+    local fn, lerr = loadstring(body)
+    if not fn then return nil, "loadstring failed: " .. tostring(lerr) end
+    local ok2, res = pcall(fn)
+    if not ok2 then return nil, "module pcall failed: " .. tostring(res) end
+    return res
+end
+
 return function(Tab, Luna, Window)
-    local Http = game:GetService("HttpService")
-
-    -- Hilfen
-    local function notify(title, content, icon)
-        Luna:Notification({
-            Title = title or "Sorin",
-            Icon = icon or "info",
-            ImageSource = "Material",
-            Content = content or ""
-        })
-    end
-
-    local function safeHttpGet(url)
-        local final = ("%s?cb=%d%d"):format(url, os.time(), math.random(1000,9999))
-        local ok, body = pcall(function() return game:HttpGet(final) end)
-        if not ok then return nil, "HttpGet failed: "..tostring(body) end
-        return body
-    end
-
-    local function safeLoadstring(src)
-        local fn, lerr = loadstring(src)
-        if not fn then return nil, "loadstring failed: "..tostring(lerr) end
-        local ok, res = pcall(fn)
-        if not ok then return nil, "module pcall failed: "..tostring(res) end
-        return res
-    end
-
-    -- Headline
-    Tab:CreateSection("Current Game")
-
-    -- IDs & Name, praktische Labels
-    local placeId  = game.PlaceId
-    local universe = game.GameId
-    local placeLabel = Tab:CreateParagraph({
-        Title = "IDs",
-        Text = ("PlaceId: %s\nGameId (Universe): %s"):format(placeId, universe)
-    })
-
-    -- Copy Buttons
-    local function copyToClipboard(text)
-        local copier = setclipboard or toclipboard or (syn and syn.write_clipboard)
-        if copier then
-            pcall(copier, tostring(text))
-            notify("Copied", "Wert wurde in die Zwischenablage kopiert.", "check_circle")
-        else
-            notify("Clipboard", "Dein Executor unterstützt kein setclipboard().", "warning")
-        end
-    end
-
-    local row = Tab:CreateSection("Quick Actions")
-    Tab:CreateButton({
-        Name = "Copy PlaceId",
-        Callback = function() copyToClipboard(placeId) end
-    })
-    Tab:CreateButton({
-        Name = "Copy GameId (Universe)",
-        Callback = function() copyToClipboard(universe) end
-    })
-
-    -- Manager laden
-    Tab:CreateSection("Resolver")
-    local managerRaw = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/current-game/manager.lua"
-
-    local src, e1 = safeHttpGet(managerRaw)
-    if not src then
-        Tab:CreateLabel({ Text = "Manager laden fehlgeschlagen: "..tostring(e1), Style = 3 })
-        return
-    end
-
-    local manager, e2 = safeLoadstring(src)
+    -- 1) Manager laden
+    local MANAGER_URL = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/current-game/manager.lua"
+    local manager, merr = fetchModule(MANAGER_URL)
     if not manager then
-        Tab:CreateLabel({ Text = "Manager Parsen fehlgeschlagen: "..tostring(e2), Style = 3 })
+        Tab:CreateLabel({ Text = "Manager load error: " .. tostring(merr), Style = 3 })
         return
     end
 
-    -- Eintrag finden
-    local entry = manager.registry[placeId]
-    if not entry then
-        Tab:CreateLabel({
-            Text = "Kein Eintrag für dieses Spiel.",
-            Style = 2
-        })
-        -- Dev-Hilfe: Template-Block zum Kopieren
-        Tab:CreateParagraph({
-            Title = "Template",
-            Text = ("[%d] = { name = \"<Name>\", raw = \"<RAW_URL>\", icon = \"gamepad\" },"):format(placeId)
-        })
+    -- 2) Spiel ermitteln
+    local placeId    = game.PlaceId
+    local universeId = game.GameId
+
+    local record = (manager.byUniverse and manager.byUniverse[universeId])
+                or (manager.byPlace   and manager.byPlace[placeId])
+                or manager.default
+
+    if not record or not record.module then
+        Tab:CreateLabel({ Text = "No game module mapped for this place/universe.", Style = 3 })
         return
     end
 
-    -- Spiel-Modul laden
-    local gameSrc, e3 = safeHttpGet(entry.raw)
-    if not gameSrc then
-        Tab:CreateLabel({ Text = "Spiel-Tab HttpGet fehlgeschlagen: "..tostring(e3), Style = 3 })
-        return
-    end
-
-    local gameMod, e4 = safeLoadstring(gameSrc)
+    -- 3) Game-Modul laden
+    local gameMod, gerr = fetchModule(record.module)
     if not gameMod then
-        Tab:CreateLabel({ Text = "Spiel-Tab loadstring fehlgeschlagen: "..tostring(e4), Style = 3 })
+        Tab:CreateLabel({ Text = "Game module load error: " .. tostring(gerr), Style = 3 })
+        return
+    end
+    if type(gameMod) ~= "function" then
+        Tab:CreateLabel({ Text = "Game module didn’t return a function.", Style = 3 })
         return
     end
 
-    -- Optional neue Unter-Tab-Navigation? – hier: wir *ersetzen* die aktuelle Tab-Fläche mit dem Game-Inhalt
-    Tab:CreateSection(("Loading: %s"):format(entry.name))
-    local ok, err = pcall(gameMod, Tab, Luna, Window, {
-        placeId = placeId,
-        universeId = universe,
-        name = entry.name
-    })
+    -- 4) Kontext + Aufruf
+    local ctx = {
+        name       = record.name or "Current Game",
+        moduleUrl  = record.module,
+        placeId    = placeId,
+        universeId = universeId,
+    }
+
+    local ok, err = pcall(gameMod, Tab, Luna, Window, ctx)
     if not ok then
-        Tab:CreateLabel({ Text = "Spiel-Tab Init-Fehler: "..tostring(err), Style = 3 })
-        return
+        Tab:CreateLabel({ Text = "Init error: " .. tostring(err), Style = 3 })
     end
-
-    -- Optische Info
-    notify("Game Loaded", ("Geladen: %s (PlaceId %s)"):format(entry.name, placeId), "gamepad")
 end
