@@ -39,8 +39,8 @@ Luna:Notification({
 
 -- 3) Tabs als Remote-Module laden (deine Repo-Links)
 local TABS = {
-    ["Main"]    = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/MainTab.lua",
-    ["Credits"] = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/Credits.lua",
+    ["Credits"]   = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/Credits.lua",
+    ["Developer"] = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/Developer.lua",
 }
 
 -- Hilfsfunktionen
