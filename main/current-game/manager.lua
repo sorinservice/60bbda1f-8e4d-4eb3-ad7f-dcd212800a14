@@ -1,17 +1,16 @@
--- returns a registry table the loader can consume
+-- manager.lua
+-- Map your games here. Prefer UniverseId (game.GameId); fall back to PlaceId.
 return {
-    -- Optional: standard Icon für Spiel-Tabs (Luna Icon-Namen)
-    defaultIcon = "gamepad",
-
-    -- Map: PlaceId -> { name = "...", raw = "RAW URL zum Spiel-Tab" }
-    registry = {
-        [2992873140] = {
-            name = "Emergency Hamburg",
-            raw  = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/current-game/games/EmergencyHamburg.lua",
-            icon = "",  -- optional, sonst defaultIcon
+    byUniverse = {
+        [2992873140] = { -- <== UniverseId
+            name   = "Emergency Hamburg",
+            module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/current-game/games/EmergencyHamburg.lua",
         },
-
-        -- Weitere Spiele hier hinzufügen …
-        -- [PLACE_ID] = { name = "Name", raw = "https://raw.githubusercontent.com/…/games/Name.lua", icon="…" },
-    }
+    },
+    byUniverse = {
+        [0000000000] = { -- <== UniverseId
+            name   = "Game",
+            module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/current-game/games/Game",
+        },
+    },
 }
