@@ -7,7 +7,7 @@ return {
     registry = {
         [2992873140] = {
             name = "Emergency Hamburg",
-            raw  = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/EmergencyHamburg.lua",
+            raw  = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/current-game/games/EmergencyHamburg.lua",
             icon = "",  -- optional, sonst defaultIcon
         },
 
