@@ -1,6 +1,10 @@
+-- Boot Luna (UI lib)
+local Luna = loadstring(game:HttpGet("https://raw.githubusercontent.com/sorinservice/luna-lib-remastered/refs/heads/main/luna-ui.lua", true))()
+
+
 local Window = Luna:CreateWindow({
 		Name = "Luna Example Window",
-		Subtitle = "Test",
+		Subtitle = "Test Subtitle",
 		LogoID = "6031097225",
 		LoadingEnabled = true,
 		LoadingTitle = "Luna Interface Suite",
