@@ -1,7 +1,6 @@
 -- current-game/game-loader.lua
 return function(Tab, Luna, Window)
     local function httpget(url)
-        -- Wichtig: Keine Cachebuster an GitHub-Raw anhängen
         return game:HttpGet(url)
     end
 
@@ -27,24 +26,42 @@ return function(Tab, Luna, Window)
     local placeId = game.PlaceId
     local ctx = mgr.byPlace and mgr.byPlace[placeId]
 
+    -- kein Eintrag für dieses Spiel -> freundlicher Fallback (ohne SetTitle)
     if not ctx then
-        -- Freundlicher Fallback ohne Error
-        Tab:SetTitle("Current Game")
         Tab:CreateSection("No scripts for this game (yet)")
-        Tab:CreateLabel({ Text = "PlaceId: "..tostring(placeId), Style = 2 })
+        Tab:CreateLabel({ Text = "PlaceId: " .. tostring(placeId), Style = 2 })
         Tab:CreateButton({
             Name = "Copy PlaceId",
             Callback = function()
-                setclipboard(tostring(placeId))
-                Luna:Notification({ Title="Copied", Icon="check_circle", ImageSource="Material", Content="PlaceId copied" })
+                if setclipboard then
+                    setclipboard(tostring(placeId))
+                    Luna:Notification({
+                        Title = "Copied",
+                        Icon = "check_circle",
+                        ImageSource = "Material",
+                        Content = "PlaceId copied to clipboard."
+                    })
+                else
+                    Luna:Notification({
+                        Title = "Clipboard",
+                        Icon = "info",
+                        ImageSource = "Material",
+                        Content = "Executor has no setclipboard."
+                    })
+                end
             end
         })
         return
     end
 
-    -- Tab-Titel aus Manager
-    if ctx.name then Tab:SetTitle(ctx.name) end
+    -- Abschnittsüberschrift (Titel kommt bereits aus dem Loader)
     Tab:CreateSection((ctx.name or "Current Game") .. " – Scripts")
+
+    -- Modul laden
+    if not ctx.module or ctx.module == "" then
+        Tab:CreateLabel({ Text = "Game module URL missing in manager.lua", Style = 3 })
+        return
+    end
 
     local gameMod, gerr = safeload(ctx.module)
     if not gameMod then
@@ -53,8 +70,8 @@ return function(Tab, Luna, Window)
     end
 
     local ok, perr = pcall(gameMod, Tab, Luna, Window, {
-        name   = ctx.name or "Current Game",
-        module = ctx.module,
+        name    = ctx.name or "Current Game",
+        module  = ctx.module,
         placeId = placeId,
     })
     if not ok then
