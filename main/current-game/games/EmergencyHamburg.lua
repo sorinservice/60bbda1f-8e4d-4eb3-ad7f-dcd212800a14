@@ -1,39 +1,81 @@
-print("EH Module loaded")
+-- current-game/games/EmergencyHamburg.lua
 return function(Tab, Luna, Window, ctx)
-    Tab:CreateSection(ctx.name .. " – Scripts")
+    -- One section; the loader won’t add another
+    Tab:CreateSection((ctx and ctx.name or "Current Game") .. " — Scripts")
 
-    local function addScript(name, loadstringCode, opts)
+    -- helper: add a script entry
+    -- opts = { subtext = "optional small note", recommended = true, raw = false }
+    local function addScript(displayName, source, opts)
         opts = opts or {}
-        local display = name .. (opts.subtext and (" — " .. opts.subtext) or "")
+
+        -- Build the button label (name + optional subtext)
+        local title = displayName
+        if opts.subtext and #opts.subtext > 0 then
+            title = title .. " — " .. opts.subtext
+        end
+        if opts.recommended then
+            -- put “Recommended by Sorin” in the button’s description (cleaner than a lone green label)
+            opts.description = "Recommended by Sorin"
+        end
+
         Tab:CreateButton({
-            Name = display,
+            Name = title,
             Description = opts.description or "Execute this script",
             Callback = function()
                 local ok, err = pcall(function()
-                    loadstring(loadstringCode)()
+                    if opts.raw then
+                        -- 'source' IS raw Lua string code, not a URL
+                        loadstring(source)()
+                    else
+                        -- 'source' IS a URL to raw Lua; fetch code then compile+run
+                        local code = game:HttpGet(source)
+                        loadstring(code)()
+                    end
                 end)
+
                 if ok then
-                    Luna:Notification({ Title = name, Icon="check_circle", ImageSource="Material", Content="Executed successfully!" })
+                    Luna:Notification({
+                        Title = displayName,
+                        Icon = "check_circle",
+                        ImageSource = "Material",
+                        Content = "Executed successfully!"
+                    })
                 else
-                    Luna:Notification({ Title = name, Icon="error", ImageSource="Material", Content="Error: "..tostring(err) })
+                    Luna:Notification({
+                        Title = displayName,
+                        Icon = "error",
+                        ImageSource = "Material",
+                        Content = "Error: " .. tostring(err)
+                    })
                 end
             end
         })
-        if opts.style and opts.style ~= 1 then
-            Tab:CreateLabel({ Text = "Status: " .. (opts.subtext or "custom"), Style = opts.style })
-        end
+
+        -- If your UI can’t color buttons per-entry, skip separate labels.
+        -- If you still want a visible tag row, uncomment this:
+        -- if opts.recommended then
+        --     Tab:CreateLabel({ Text = "Status: Recommended by Sorin", Style = 2 })
+        -- end
     end
 
-    -- Alphabetisch eintragen, deine Empfehlung grün (Style 2)
-    addScript(
-        "Nova Hub",
-        'game:HttpGet("http://novaw.xyz/MainScript.lua")',
-        { subtext = nil }
-    )
+    ----------------------------------------------------------------
+    -- Define your scripts (URLs preferred). We’ll sort by name:
+    local scripts = {
+        { name = "Nova Hub",   url = "http://novaw.xyz/MainScript.lua" },
+        { name = "Vortex Hub", url = "https://raw.githubusercontent.com/ItemTo/VortexAutorob/refs/heads/main/release",
+          subtext = nil, recommended = true },
+        -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
+    }
 
-    addScript(
-        "Vortex Hub",
-        'game:HttpGet("https://raw.githubusercontent.com/ItemTo/VortexAutorob/refs/heads/main/release")',
-        { subtext = "Recommended by Sorin", style = 2 }
-    )
+    -- Sort alphabetically by display name
+    table.sort(scripts, function(a,b) return a.name:lower() < b.name:lower() end)
+
+    -- Render
+    for _, s in ipairs(scripts) do
+        addScript(
+            s.name,
+            s.url or s.raw,
+            { subtext = s.subtext, recommended = s.recommended, raw = s.isRaw }
+        )
+    end
 end
