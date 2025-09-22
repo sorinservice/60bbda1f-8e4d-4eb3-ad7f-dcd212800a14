@@ -1,9 +1,6 @@
 -- current-game/game-loader.lua
 return function(Tab, Luna, Window)
-    local function httpget(url)
-        return game:HttpGet(url)
-    end
-
+    local function httpget(url) return game:HttpGet(url) end
     local function safeload(url)
         local ok, body = pcall(httpget, url)
         if not ok then return nil, "HttpGet failed: " .. tostring(body) end
@@ -14,8 +11,7 @@ return function(Tab, Luna, Window)
         return res
     end
 
-    Tab:CreateParagraph({ Title = "Current Game", Text = "Loading current game..." })
-
+    -- 1) load manager (no cachebusters on raw.github)
     local managerUrl = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua"
     local mgr, merr = safeload(managerUrl)
     if not mgr then
@@ -23,15 +19,17 @@ return function(Tab, Luna, Window)
         return
     end
 
+    -- 2) resolve by PlaceId only (your chosen approach)
     local placeId = game.PlaceId
     local ctx = mgr.byPlace and mgr.byPlace[placeId]
 
-    -- kein Eintrag für dieses Spiel -> freundlicher Fallback (ohne SetTitle)
     if not ctx then
+        -- Friendly “no scripts yet” view (no errors)
         Tab:CreateSection("No scripts for this game (yet)")
         Tab:CreateLabel({ Text = "PlaceId: " .. tostring(placeId), Style = 2 })
         Tab:CreateButton({
             Name = "Copy PlaceId",
+            Description = "Copy the current PlaceId to clipboard",
             Callback = function()
                 if setclipboard then
                     setclipboard(tostring(placeId))
@@ -39,14 +37,14 @@ return function(Tab, Luna, Window)
                         Title = "Copied",
                         Icon = "check_circle",
                         ImageSource = "Material",
-                        Content = "PlaceId copied to clipboard."
+                        Content = "PlaceId copied"
                     })
                 else
                     Luna:Notification({
-                        Title = "Clipboard",
-                        Icon = "info",
+                        Title = "Clipboard unavailable",
+                        Icon = "error",
                         ImageSource = "Material",
-                        Content = "Executor has no setclipboard."
+                        Content = "Executor does not support setclipboard"
                     })
                 end
             end
@@ -54,15 +52,7 @@ return function(Tab, Luna, Window)
         return
     end
 
-    -- Abschnittsüberschrift (Titel kommt bereits aus dem Loader)
-    Tab:CreateSection((ctx.name or "Current Game") .. " – Scripts")
-
-    -- Modul laden
-    if not ctx.module or ctx.module == "" then
-        Tab:CreateLabel({ Text = "Game module URL missing in manager.lua", Style = 3 })
-        return
-    end
-
+    -- 3) pass control to the game module (it will build the UI; we don't add sections here)
     local gameMod, gerr = safeload(ctx.module)
     if not gameMod then
         Tab:CreateLabel({ Text = "Game module load error:\n" .. tostring(gerr), Style = 3 })
