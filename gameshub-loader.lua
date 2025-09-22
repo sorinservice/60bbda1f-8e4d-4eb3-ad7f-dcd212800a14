@@ -2,7 +2,7 @@
 local HttpService = game:GetService("HttpService")
 
 -- 1) Load Luna-UI
-local lunaUrl = "https://raw.githubusercontent.com/sorinservice/luna-lib-remastered/main/luna-ui.lua"
+local lunaUrl = "https://raw.githubusercontent.com/sorinservice/luna-lib-remastered/main/luna_ui%20x%20sorin-ui.lua"
 local Luna = loadstring(game:HttpGet(lunaUrl))()
 
 -- Safe wrappers for optional API
@@ -13,8 +13,8 @@ end
 
 -- 2) Build window (we'll briefly hide it while we preload)
 local Window = Luna:CreateWindow({
-    Name = "Sorin Project",
-    Subtitle = "Roblox Script Hub",
+    Name = "Sorin Hub",
+    Subtitle = "ScriptLoader",
     LogoID = "77656423525793",
     LoadingEnabled = true,
     LoadingTitle = "Sorin Loader",
