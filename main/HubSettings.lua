@@ -10,9 +10,9 @@ return function(Tab, Luna, Window)
     ----------------------------------------------------------------
     -- CONFIG
     local HUB_VERSION     = "v0.1"
-    local HUB_LASTUPDATE  = "2025-09-22"
+    local HUB_LASTUPDATE  = "22.09.2025"
     local HUB_GAMES       = "1+"
-    local HUB_SCRIPTS     = "5+"
+    local HUB_SCRIPTS     = "3+"
 
     -- Das soll beim Auto-Execute geladen werden:
     local AUTOEXEC_URL    = "https://scripts.sorinservice.online/sorin/script_hub.lua"
