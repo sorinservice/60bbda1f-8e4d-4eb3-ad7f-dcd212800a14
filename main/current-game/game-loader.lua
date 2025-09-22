@@ -1,70 +1,57 @@
 -- current-game/game-loader.lua
-return function(Tab, Luna, Window)
-    local function httpget(url) return game:HttpGet(url) end
-    local function safeload(url)
-        local ok, body = pcall(httpget, url)
-        if not ok then return nil, "HttpGet failed: " .. tostring(body) end
-        local fn, lerr = loadstring(body)
-        if not fn then return nil, "loadstring failed: " .. tostring(lerr) end
-        local ok2, res = pcall(fn)
-        if not ok2 then return nil, "module pcall failed: " .. tostring(res) end
-        return res
-    end
-
-    -- 1) load manager (no cachebusters on raw.github)
-    local managerUrl = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua"
-    local mgr, merr = safeload(managerUrl)
-    if not mgr then
-        Tab:CreateLabel({ Text = "Manager load error:\n" .. tostring(merr), Style = 3 })
-        return
-    end
-
-    -- 2) resolve by PlaceId only (your chosen approach)
-    local placeId = game.PlaceId
-    local ctx = mgr.byPlace and mgr.byPlace[placeId]
-
+return function(Tab, Luna, Window, ctx)
+    -- If the loader already gave us ctx, use it; otherwise show a friendly fallback.
     if not ctx then
-        -- Friendly “no scripts yet” view (no errors)
-        Tab:CreateSection("No scripts for this game (yet)")
-        Tab:CreateLabel({ Text = "PlaceId: " .. tostring(placeId), Style = 2 })
+        Tab:CreateSection("Current Game — Scripts")
+        Tab:CreateLabel({ Text = "No scripts for this game (yet).", Style = 2 })
         Tab:CreateButton({
             Name = "Copy PlaceId",
-            Description = "Copy the current PlaceId to clipboard",
+            Description = "Copy current PlaceId to clipboard",
             Callback = function()
-                if setclipboard then
-                    setclipboard(tostring(placeId))
-                    Luna:Notification({
-                        Title = "Copied",
-                        Icon = "check_circle",
-                        ImageSource = "Material",
-                        Content = "PlaceId copied"
-                    })
-                else
-                    Luna:Notification({
-                        Title = "Clipboard unavailable",
-                        Icon = "error",
-                        ImageSource = "Material",
-                        Content = "Executor does not support setclipboard"
-                    })
-                end
+                setclipboard(tostring(game.PlaceId))
+                Luna:Notification({ Title="Copied", Icon="check_circle", ImageSource="Material", Content="PlaceId copied" })
             end
         })
         return
     end
 
-    -- 3) pass control to the game module (it will build the UI; we don't add sections here)
-    local gameMod, gerr = safeload(ctx.module)
-    if not gameMod then
-        Tab:CreateLabel({ Text = "Game module load error:\n" .. tostring(gerr), Style = 3 })
+    -- Title & section exactly once
+    if ctx.name then
+        pcall(function() Tab:SetTitle(ctx.name) end) -- some Luna builds may not have SetTitle
+    end
+    Tab:CreateSection((ctx.name or "Current Game") .. " — Scripts")
+
+    -- Pull the game module once and run it
+    local okBody, body = pcall(function() return game:HttpGet(ctx.module) end)
+    if not okBody then
+        Tab:CreateLabel({ Text = "Game module load error:\n" .. tostring(body), Style = 3 })
+        return
+    end
+    local fn, lerr = loadstring(body)
+    if not fn then
+        Tab:CreateLabel({ Text = "Game module compile error:\n" .. tostring(lerr), Style = 3 })
         return
     end
 
-    local ok, perr = pcall(gameMod, Tab, Luna, Window, {
-        name    = ctx.name or "Current Game",
-        module  = ctx.module,
-        placeId = placeId,
-    })
-    if not ok then
+    local okRun, err = pcall(fn)
+    if not okRun or type(err) ~= "function" then
+        -- when loadstring succeeds, calling it returns the module function
+        local modFn = okRun and err or nil
+        if not modFn then
+            Tab:CreateLabel({ Text = "Game module invalid export.", Style = 3 })
+            return
+        end
+        local okCall, perr = pcall(modFn, Tab, Luna, Window, ctx)
+        if not okCall then
+            Tab:CreateLabel({ Text = "Game module init error:\n" .. tostring(perr), Style = 3 })
+        end
+        return
+    end
+
+    -- If we got here, 'err' is actually the module function
+    local mod = err
+    local okCall, perr = pcall(mod, Tab, Luna, Window, ctx)
+    if not okCall then
         Tab:CreateLabel({ Text = "Game module init error:\n" .. tostring(perr), Style = 3 })
     end
 end
