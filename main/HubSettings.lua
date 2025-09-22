@@ -1,5 +1,6 @@
 -- HubSettings.lua
 -- SorinHub: AutoExec, Performance, Hub Info, Credits
+print ("Delete")
 return function(Tab, Luna, Window)
     local RunService = game:GetService("RunService")
     local Players = game:GetService("Players")
