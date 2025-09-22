@@ -1,3 +1,4 @@
+print("EH Module loaded")
 return function(Tab, Luna, Window, ctx)
     Tab:CreateSection(ctx.name .. " – Scripts")
 
