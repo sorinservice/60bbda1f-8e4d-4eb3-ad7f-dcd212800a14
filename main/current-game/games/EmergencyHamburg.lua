@@ -11,12 +11,9 @@ return function(Tab, Luna, Window, ctx)
         if opts.subtext and #opts.subtext > 0 then
             title = title .. " — " .. opts.subtext
         end
-if opts.recommended then
-    Tab:CreateLabel({
-        Text = "✓ Recommended by Sorin",
-        Style = 2 -- grün
-    })
-end
+        if opts.recommended and not opts.description then
+            opts.description = "✓ Recommended by Sorin"
+        end
 
         Tab:CreateButton({
             Name = title,
