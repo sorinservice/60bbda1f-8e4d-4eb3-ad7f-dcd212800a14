@@ -1,4 +1,4 @@
--- HubSettings.lua (angepasst)
+-- HubSettings.lua
 -- Luna-UI Tab: Hub Settings (Auto Execute + Performance + Hub Info + Credits)
 
 return function(Tab, Luna, Window)
@@ -20,10 +20,10 @@ return function(Tab, Luna, Window)
 
     -- Erweiterte Kandidaten (basierend auf Executors wie Fluxus, Krnl, Synapse)
     local CANDIDATE_DIRS = {
-        "autoexec", "AutoExec", "AutoExecute", "autoexecute",  -- Standard
-        "workspace/autoexec", "scripts/autoexec",  -- Workspace-Varianten
-        "Fluxus/Autoexs", "fluxus/autoexec",  -- Fluxus-spezifisch (Android)
-        "Krnl/autoexec", "Synapse/autoexec",  -- Executor-spezifisch
+        "autoexec", "AutoExec", "AutoExecute", "autoexecute",
+        "workspace/autoexec", "scripts/autoexec",
+        "Fluxus/Autoexs", "fluxus/autoexec",
+        "Krnl/autoexec", "Synapse/autoexec",
         ""  -- Root als Fallback
     }
 
@@ -76,8 +76,20 @@ return function(Tab, Luna, Window)
     -- AUTOEXEC STATE
     local autoexecEnabled   = false
     local autoexecPath      = nil
-    local sessionExecURL    = nil -- fallback, wenn writefile fehlt
-    local sessionQueued     = false  -- Flag, um zu tracken, ob queued
+    local sessionExecURL    = nil
+    local sessionQueued     = false
+
+    local function setLabelText(el, txt)
+        if el and type(el.SetText) == "function" then
+            pcall(function() el:SetText(txt) end)
+            return true
+        end
+        if el and type(el.SetContent) == "function" then
+            pcall(function() el:SetContent(txt) end)
+            return true
+        end
+        return false
+    end
 
     local function updatePathInfo()
         if autoexecPath then
@@ -102,7 +114,7 @@ return function(Tab, Luna, Window)
         Callback = function(state)
             autoexecEnabled = state
             if state then
-                -- Versuch: Datei anlegen
+                -- Versuche, Datei anzulegen
                 if has(writefile) then
                     local content = makeAutoexecContent(AUTOEXEC_URL)
                     local wrote = false
@@ -122,15 +134,13 @@ return function(Tab, Luna, Window)
                         end
                     end
                     if not wrote then
-                        -- Datei nicht schreibbar → Session-Modus
                         sessionExecURL = AUTOEXEC_URL
                         autoexecPath = nil
                         sessionQueued = true
-                        queueOnTeleport(content)  -- content, nicht URL (für Zuverlässigkeit)
+                        queueOnTeleport(content)  -- Nur für Teleport, nicht sofort
                         Luna:Notification({ Title="Autoexec", Icon="warning", ImageSource="Material", Content="Kann nicht speichern → Session-only aktiv." })
                     end
                 else
-                    -- kein FS → Session-Modus
                     sessionExecURL = AUTOEXEC_URL
                     autoexecPath = nil
                     sessionQueued = true
@@ -138,14 +148,17 @@ return function(Tab, Luna, Window)
                     Luna:Notification({ Title="Autoexec", Icon="warning", ImageSource="Material", Content="writefile nicht vorhanden → Session-only aktiv." })
                 end
 
-                -- Sofort ausführen (jetzt)
-                pcall(function()
-                    local code = game:HttpGet(AUTOEXEC_URL)
-                    loadstring(code)()
+                -- Sofortiges Laden mit Verzögerung (um Race-Condition zu vermeiden)
+                task.spawn(function()
+                    task.wait(0.5)  -- Verzögerung, damit UI-Zustand gesetzt wird
+                    pcall(function()
+                        local code = game:HttpGet(AUTOEXEC_URL)
+                        loadstring(code)()
+                    end)
                 end)
 
             else
-                -- AUS: Datei entfernen (wenn möglich) + Session clear (kann nicht, also Flag reset)
+                -- Deaktivierung
                 if autoexecPath then
                     if safeDelete(autoexecPath) then
                         Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Removed: "..autoexecPath })
@@ -157,10 +170,11 @@ return function(Tab, Luna, Window)
                 Luna:Notification({ Title="Autoexec", Icon="info", ImageSource="Material", Content="Autoexec disabled." })
             end
             updatePathInfo()
+            toggle:Set({ Enabled = autoexecEnabled })  -- Zustand erzwingen
         end
     })
 
-    -- remove button
+    -- Remove button
     Tab:CreateButton({
         Name = "Remove Autoexec",
         Callback = function()
@@ -177,6 +191,7 @@ return function(Tab, Luna, Window)
                 Luna:Notification({ Title="Autoexec", Icon="info", ImageSource="Material", Content="Session cleared." })
             end
             updatePathInfo()
+            toggle:Set({ Enabled = false })  -- Toggle deaktivieren
         end
     })
 
@@ -186,7 +201,7 @@ return function(Tab, Luna, Window)
     -- PERFORMANCE (ein Block, der sich aktualisiert)
     Tab:CreateSection("Performance")
 
-    -- FPS Cap Slider (setzt nur, wenn Executor API vorhanden)
+    -- FPS Cap Slider
     local fpsCap = 120
     Tab:CreateSlider({
         Name = "Set FPS",
@@ -200,7 +215,7 @@ return function(Tab, Luna, Window)
         end
     })
 
-    -- Ein Paragraph-Block für alle Werte
+    -- Paragraph-Block für Performance
     local perfParagraph = Tab:CreateParagraph({
         Title = "Performance",
         Text  = "FPS: measuring...\nPing: ...\nMemory: ...\nNetwork: ..."
@@ -222,7 +237,7 @@ return function(Tab, Luna, Window)
     local frames, last = 0, tick()
     RunService.RenderStepped:Connect(function() frames += 1 end)
 
-    -- jede Sekunde aktualisieren (defensiv)
+    -- Jede Sekunde aktualisieren
     task.spawn(function()
         while true do
             task.wait(1)
@@ -231,20 +246,19 @@ return function(Tab, Luna, Window)
             local fps = (elapsed > 0) and math.floor(frames/elapsed + 0.5) or 0
             frames, last = 0, now
 
-            -- Memory (Lua)
+            -- Memory
             local memStr = "N/A"
             local okMem, kb = pcall(collectgarbage, "count")
             if okMem and kb then memStr = string.format("%.1fMB (Lua)", kb/1024) end
 
-            -- Ping/Netzwerk best-effort (angepasst mit GetNetworkPing)
-            local pingStr, netStr = "N/A", "N/A"
+            -- Ping
+            local pingStr = "N/A"
             local okPing, pingVal = pcall(function()
-                return LP:GetNetworkPing()  -- Modernere API, falls verfügbar
+                return LP:GetNetworkPing()
             end)
             if okPing and pingVal then
                 pingStr = tostring(math.floor(pingVal)).."ms"
             else
-                -- Fallback auf Stats
                 if Stats and Stats.Network and Stats.Network.ServerStatsItem then
                     local it = Stats.Network.ServerStatsItem
                     local candidates = {"Data Ping","DataPing","Ping","PingMs"}
@@ -258,6 +272,8 @@ return function(Tab, Luna, Window)
                 end
             end
 
+            -- Network
+            local netStr = "N/A"
             local okRecv, recv = pcall(function()
                 if Stats and Stats.Network and Stats.Network.ServerStatsItem then
                     local it = Stats.Network.ServerStatsItem
@@ -271,22 +287,20 @@ return function(Tab, Luna, Window)
             if okRecv and recv then
                 netStr = tostring(math.floor(tonumber(recv))).."KB/s"
             else
-                -- Fallback: Total Data Rate
                 local okTotal, total = pcall(function()
-                    return Stats:GetTotalDataReceiveRate()  -- Globale Rate
+                    return Stats:GetTotalDataReceiveRate()
                 end)
                 if okTotal and total then netStr = tostring(math.floor(total)).."KB/s" end
             end
 
             local text = ("FPS: %d\nPing: %s\nMemory: %s\nNetwork: %s")
                 :format(fps, pingStr, memStr, netStr)
-
             safeSetParagraph(perfParagraph, text)
         end
     end)
 
     ----------------------------------------------------------------
-    -- HUB INFO (genau wie gewünscht)
+    -- HUB INFO
     Tab:CreateSection("Sorin Hub Info")
     Tab:CreateLabel({ Text = "Hub Version: "..HUB_VERSION,   Style = 2 })
     Tab:CreateLabel({ Text = "Last Update: "..HUB_LASTUPDATE, Style = 2 })
@@ -294,7 +308,7 @@ return function(Tab, Luna, Window)
     Tab:CreateLabel({ Text = "Scripts: "..HUB_SCRIPTS,       Style = 2 })
 
     ----------------------------------------------------------------
-    -- CREDITS (dein Block)
+    -- CREDITS
     Tab:CreateSection("Credits")
 
     Tab:CreateParagraph({
