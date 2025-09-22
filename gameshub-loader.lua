@@ -1,7 +1,7 @@
 --// Sorin Loader (Luna-UI)
 local HttpService = game:GetService("HttpService")
 
--- 1) Luna-UI richtig laden (korrekte RAW-URL!)
+-- 1) Luna-UI laden
 local lunaUrl = "https://raw.githubusercontent.com/sorinservice/luna-lib-remastered/main/luna-ui.lua"
 local Luna = loadstring(game:HttpGet(lunaUrl))()
 
@@ -17,7 +17,7 @@ local Window = Luna:CreateWindow({
         RootFolder = nil,
         ConfigFolder = "SorinHubConfig"
     },
-    KeySystem = false, -- wenn true, dann KeySettings ausfüllen
+    KeySystem = false, -- bei Bedarf true und KeySettings pflegen
     KeySettings = {
         Title = "SorinHub Key",
         Subtitle = "Key System",
@@ -29,7 +29,7 @@ local Window = Luna:CreateWindow({
     }
 })
 
--- Optional: kleine Willkommensmeldung
+-- Optional: kurze Willkommensmeldung
 Luna:Notification({
     Title = "SorinHub",
     Icon = "sparkle",
@@ -37,13 +37,14 @@ Luna:Notification({
     Content = "UI initialized successfully."
 })
 
--- 3) Tabs als Remote-Module laden (deine Repo-Links)
+-- 3) Remote-Module (Tabs)
 local TABS = {
-    ["Credits"]   = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/Credits.lua",
-    ["Developer"] = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/Developer.lua",
+    Credits     = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/Credits.lua",
+    Developer   = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/Developer.lua",
+    CurrentGame = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/current-game/game-loader.lua",
 }
 
--- Hilfsfunktionen
+-- 4) Helfer
 local function safeRequire(url)
     local final = url .. "?cb=" .. tostring(os.time()) .. tostring(math.random(1000,9999))
     local ok, body = pcall(function() return game:HttpGet(final) end)
@@ -58,23 +59,57 @@ local function safeRequire(url)
 end
 
 local function attachTab(name, url, icon)
-    local Tab = Window:CreateTab({ Name = name, Icon = icon or "sparkle", ImageSource = "Material", ShowTitle = true })
+    local Tab = Window:CreateTab({
+        Name = name,
+        Icon = icon or "sparkle",
+        ImageSource = "Material",
+        ShowTitle = true
+    })
+
     local mod, err = safeRequire(url)
     if not mod then
         Tab:CreateLabel({ Text = "Error loading '"..name.."': "..tostring(err), Style = 3 })
         return
     end
-    -- Erwartet: das Modul gibt eine Funktion zurück: function(Tab, Luna, Window) ... end
+
+    -- Erwartet: Modul gibt function(Tab, Luna, Window, [ctx]) zurück
     local ok, msg = pcall(mod, Tab, Luna, Window)
     if not ok then
         Tab:CreateLabel({ Text = "Init error '"..name.."': "..tostring(msg), Style = 3 })
     end
 end
 
--- 4) Tabs laden
-for name, url in pairs(TABS) do
-    attachTab(name, url)
+-- Liest manager.lua und gibt den passenden Tab-Titel zurück
+local function resolveCurrentGameTitle()
+    local managerUrl = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/current-game/manager.lua"
+    local cb = "?cb=" .. tostring(os.time()) .. tostring(math.random(1000,9999))
+
+    local ok, body = pcall(function() return game:HttpGet(managerUrl .. cb) end)
+    if not ok then return "Current Game" end
+
+    local fn = loadstring(body)
+    if not fn then return "Current Game" end
+
+    local ok2, cfg = pcall(fn)
+    if not ok2 or type(cfg) ~= "table" or type(cfg.byUniverse) ~= "table" then
+        return "Current Game"
+    end
+
+    local uid = game.GameId -- UniverseId
+    local entry = cfg.byUniverse[uid]
+    if entry and type(entry.name) == "string" and #entry.name > 0 then
+        return entry.name
+    end
+    return "Current Game"
 end
 
--- 5) (optional) Home-Tab der Lib
+-- 5) Tabs erstellen
+attachTab("Credits",   TABS.Credits,   "emoji_events")
+attachTab("Developer", TABS.Developer, "extension")
+
+-- dynamischer Titel für das aktuelle Spiel aus manager.lua
+local currentGameTitle = resolveCurrentGameTitle()
+attachTab(currentGameTitle, TABS.CurrentGame, "data_usage")
+
+-- 6) (optional) Home-Tab der Lib
 Window:CreateHomeTab()
