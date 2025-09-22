@@ -1,9 +1,9 @@
 -- HubSettings.lua
 -- SorinHub: Performance, Hub Info, Credits
 return function(Tab, Luna, Window)
-    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
     local Stats = game:GetService("Stats")
-    local LP = Players.LocalPlayer
+    local LP = game:GetService("Players").LocalPlayer
 
     ----------------------------------------------------------------
     -- CONFIG
@@ -31,79 +31,64 @@ return function(Tab, Luna, Window)
     local perfParagraph = Tab:CreateParagraph({
         Title = "Performance",
         Text = "Collecting stats...",
-        Style = 2 -- green style
+        Style = 2
     })
 
-    -- FPS Cap Slider
+    -- FPS CAP Slider (silent)
+    local lastCap = 60
     Tab:CreateSlider({
         Name = "FPS Cap",
         Min = 30,
         Max = 360,
-        Default = 60,
+        Default = lastCap,
         Increment = 5,
         Callback = function(val)
             if typeof(setfpscap) == "function" then
                 setfpscap(val)
-                Luna:Notification({
-                    Title = "FPS Cap",
-                    Icon = "speed",
-                    Content = "Limit set to " .. val .. " FPS"
-                })
-            else
-                Luna:Notification({
-                    Title = "FPS Cap",
-                    Icon = "warning",
-                    Content = "Executor does not support setfpscap"
-                })
+                lastCap = val
             end
         end
     })
 
-    -- Update Loop
+    -- FPS counter via RenderStepped
+    local fpsCounter, lastTime, frames = 0, tick(), 0
+    RunService.RenderStepped:Connect(function() frames += 1 end)
+
     task.spawn(function()
         while task.wait(1) do
-            local fps = 0
-            local okFps, statFps = pcall(function()
-                return Stats.Workspace.FPS:GetValue()
-            end)
-            if okFps and statFps then
-                fps = math.floor(statFps)
-            end
+            -- FPS berechnen
+            local now = tick()
+            local elapsed = now - lastTime
+            fpsCounter = math.floor(frames / (elapsed > 0 and elapsed or 1))
+            frames, lastTime = 0, now
 
+            -- Ping
             local ping = "N/A"
             local okPing, statPing = pcall(function()
                 return Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
             end)
-            if okPing and statPing then
-                ping = statPing
-            end
+            if okPing and statPing then ping = statPing end
 
+            -- Memory
             local mem = "N/A"
             local okMem, memVal = pcall(function()
-                return Stats:GetTotalMemoryUsageMb()
+                return collectgarbage("count") / 1024
             end)
-            if okMem and memVal then
-                mem = string.format("%.1f MB", memVal)
-            end
+            if okMem and memVal then mem = string.format("%.1f MB", memVal) end
 
-            local sent = "N/A"
+            -- Network
+            local sent, recv = "N/A", "N/A"
             local okS, valS = pcall(function()
                 return Stats.Network.ServerStatsItem["Data Send Kbps"]:GetValue()
             end)
-            if okS and valS then
-                sent = tostring(math.floor(valS)) .. " KB/s"
-            end
-
-            local recv = "N/A"
             local okR, valR = pcall(function()
                 return Stats.Network.ServerStatsItem["Data Receive Kbps"]:GetValue()
             end)
-            if okR and valR then
-                recv = tostring(math.floor(valR)) .. " KB/s"
-            end
+            if okS and valS then sent = tostring(math.floor(valS)) .. " KB/s" end
+            if okR and valR then recv = tostring(math.floor(valR)) .. " KB/s" end
 
             local text = ("FPS: %d\nPing: %s\nMemory: %s\nNetwork Sent: %s\nNetwork Received: %s")
-                :format(fps, ping, mem, sent, recv)
+                :format(fpsCounter, ping, mem, sent, recv)
 
             pcall(function()
                 perfParagraph:SetText(text)
@@ -113,27 +98,24 @@ return function(Tab, Luna, Window)
 
     ----------------------------------------------------------------
     -- HUB INFO
-    local infoParagraph = Tab:CreateParagraph({
+    Tab:CreateParagraph({
         Title = "Sorin Hub Info",
         Text = ("Hub Version: %s\nLast Update: %s\nGames: %s\nScripts: %s")
             :format(HUB_VERSION, HUB_LASTUPDATE, HUB_GAMES, HUB_SCRIPTS),
-        Style = 2 -- grünlich
+        Style = 2
     })
 
     ----------------------------------------------------------------
     -- CREDITS
     Tab:CreateSection("Credits")
-
     Tab:CreateParagraph({
         Title = "Main Credits",
         Text = "Nebula Softworks — Luna UI (Design & Code)"
     })
-
     Tab:CreateParagraph({
         Title = "SorinHub Credits",
         Text = "SorinHub by SorinServices — by EndOfCircuit"
     })
-
     Tab:CreateLabel({
         Text = "SorinHub Scriptloader — by SorinServices",
         Style = 2
