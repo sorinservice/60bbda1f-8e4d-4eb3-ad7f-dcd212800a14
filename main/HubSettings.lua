@@ -7,7 +7,7 @@ return function(Tab, Luna, Window)
         scriptsCnt = "3",
         autoexecCode = 'loadstring(game:HttpGet("https://scripts.sorinservice.online/sorin/script_hub.lua"))()',
         autoexecFile = "sorin_hub_autoexec.lua",
-        autoexecDirs = { "autoexec", "AutoExecute", "autoexecute" },
+        autoexecDirs = { "autoexec", "AutoExecute", "autoexecute", "autoexec" },
     }
 
     -- ===== FS helpers =====
