@@ -1,7 +1,5 @@
 -- current-game/games/EmergencyHamburg.lua
 return function(Tab, Luna, Window, ctx)
-    -- One section; the loader won’t add another
-    Tab:CreateSection((ctx and ctx.name or "Current Game") .. " — Scripts")
 
     -- helper: add a script entry
     -- opts = { subtext = "optional small note", recommended = true, raw = false }
