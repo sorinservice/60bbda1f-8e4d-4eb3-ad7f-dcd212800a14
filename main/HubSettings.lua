@@ -1,9 +1,10 @@
 -- HubSettings.lua
--- SorinHub: Performance, Hub Info, Credits
+-- SorinHub: Performance, Hub Info, Credits (safe / minimal / stable)
 return function(Tab, Luna, Window)
     local RunService = game:GetService("RunService")
     local Stats = game:GetService("Stats")
-    local LP = game:GetService("Players").LocalPlayer
+    local Players = game:GetService("Players")
+    local LP = Players.LocalPlayer
 
     ----------------------------------------------------------------
     -- CONFIG
@@ -18,77 +19,84 @@ return function(Tab, Luna, Window)
         Name = "Destroy Hub",
         Callback = function()
             if Window and type(Window.Destroy) == "function" then
-                Window:Destroy()
+                pcall(function() Window:Destroy() end)
             else
-                game.CoreGui:ClearAllChildren()
+                pcall(function() game.CoreGui:ClearAllChildren() end)
             end
             print("[SorinHub] Hub destroyed")
         end
     })
 
     ----------------------------------------------------------------
-    -- PERFORMANCE
+    -- PERFORMANCE (lightweight, 1s updates)
     local perfParagraph = Tab:CreateParagraph({
         Title = "Performance",
         Text = "Collecting stats...",
         Style = 2
     })
 
-    -- FPS CAP Slider (silent)
-    local lastCap = 60
+    -- FPS CAP Slider (silent set, no spam)
+    local defaultCap = 60
     Tab:CreateSlider({
         Name = "FPS Cap",
         Min = 30,
         Max = 360,
-        Default = lastCap,
+        Default = defaultCap,
         Increment = 5,
         Callback = function(val)
             if typeof(setfpscap) == "function" then
-                setfpscap(val)
-                lastCap = val
+                pcall(function() setfpscap(val) end)
             end
         end
     })
 
-    -- FPS counter via RenderStepped
-    local fpsCounter, lastTime, frames = 0, tick(), 0
-    RunService.RenderStepped:Connect(function() frames += 1 end)
+    -- lightweight FPS measurement using RenderStepped counter (low overhead)
+    local frames = 0
+    local lastTick = tick()
+    RunService.RenderStepped:Connect(function() frames = frames + 1 end)
 
+    -- update loop every second; all pcall'd so it can't crash UI
     task.spawn(function()
-        while task.wait(1) do
-            -- FPS berechnen
+        while true do
+            task.wait(1)
+
+            -- compute FPS in a safe way
             local now = tick()
-            local elapsed = now - lastTime
-            fpsCounter = math.floor(frames / (elapsed > 0 and elapsed or 1))
-            frames, lastTime = 0, now
+            local elapsed = now - lastTick
+            local fps = 0
+            if elapsed > 0 then
+                fps = math.floor((frames / elapsed) + 0.5)
+            end
+            frames = 0
+            lastTick = now
 
-            -- Ping
-            local ping = "N/A"
-            local okPing, statPing = pcall(function()
-                return Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
-            end)
-            if okPing and statPing then ping = statPing end
-
-            -- Memory
+            -- memory via collectgarbage
             local mem = "N/A"
-            local okMem, memVal = pcall(function()
-                return collectgarbage("count") / 1024
+            pcall(function()
+                local kb = collectgarbage("count")
+                if kb then mem = string.format("%.1f MB", kb / 1024) end
             end)
-            if okMem and memVal then mem = string.format("%.1f MB", memVal) end
 
-            -- Network
+            -- ping: safe pcall to Stats if available
+            local ping = "N/A"
+            pcall(function()
+                local item = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Ping"]
+                if item and type(item.GetValueString) == "function" then
+                    ping = item:GetValueString()
+                end
+            end)
+
+            -- net: safe pcall
             local sent, recv = "N/A", "N/A"
-            local okS, valS = pcall(function()
-                return Stats.Network.ServerStatsItem["Data Send Kbps"]:GetValue()
+            pcall(function()
+                local s = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Send Kbps"]
+                local r = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Receive Kbps"]
+                if s and type(s.GetValue) == "function" then sent = tostring(math.floor(s:GetValue())) .. " KB/s" end
+                if r and type(r.GetValue) == "function" then recv = tostring(math.floor(r:GetValue())) .. " KB/s" end
             end)
-            local okR, valR = pcall(function()
-                return Stats.Network.ServerStatsItem["Data Receive Kbps"]:GetValue()
-            end)
-            if okS and valS then sent = tostring(math.floor(valS)) .. " KB/s" end
-            if okR and valR then recv = tostring(math.floor(valR)) .. " KB/s" end
 
             local text = ("FPS: %d\nPing: %s\nMemory: %s\nNetwork Sent: %s\nNetwork Received: %s")
-                :format(fpsCounter, ping, mem, sent, recv)
+                :format(fps, ping or "N/A", mem, sent, recv)
 
             pcall(function()
                 perfParagraph:SetText(text)
