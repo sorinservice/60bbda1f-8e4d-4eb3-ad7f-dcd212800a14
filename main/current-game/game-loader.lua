@@ -1,90 +1,63 @@
--- main/current-game/game-loader.lua
+-- current-game/game-loader.lua
 return function(Tab, Luna, Window)
-    Tab:CreateSection("Loading current game…")
+    local function httpget(url)
+        -- Wichtig: Keine Cachebuster an GitHub-Raw anhängen
+        return game:HttpGet(url)
+    end
 
-    local function httpGet(url)
-        local ok, res = pcall(function() return game:HttpGet(url .. "?cb=" .. os.time()) end)
-        if not ok then return nil, "HttpGet failed: " .. tostring(res) end
+    local function safeload(url)
+        local ok, body = pcall(httpget, url)
+        if not ok then return nil, "HttpGet failed: " .. tostring(body) end
+        local fn, lerr = loadstring(body)
+        if not fn then return nil, "loadstring failed: " .. tostring(lerr) end
+        local ok2, res = pcall(fn)
+        if not ok2 then return nil, "module pcall failed: " .. tostring(res) end
         return res
     end
 
-    local function compile(body)
-        local fn, lerr = loadstring(body)
-        if not fn then return nil, "loadstring failed: " .. tostring(lerr) end
-        local ok, ret = pcall(fn)
-        if not ok then return nil, "module pcall failed: " .. tostring(ret) end
-        return ret
-    end
+    Tab:CreateParagraph({ Title = "Current Game", Text = "Loading current game..." })
 
-    -- >>> ACHTUNG: richtige RAW-URL zum Manager
-    local managerUrl = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/current-game/manager.lua"
-
-    -- 1) Manager laden
-    local body, e1 = httpGet(managerUrl)
-    if not body then
-        Tab:CreateLabel({ Text = "Manager load error: " .. e1, Style = 3 })
+    local managerUrl = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua"
+    local mgr, merr = safeload(managerUrl)
+    if not mgr then
+        Tab:CreateLabel({ Text = "Manager load error:\n" .. tostring(merr), Style = 3 })
         return
     end
 
-    local cfg, e2 = compile(body)
-    if not cfg then
-        local snippet = string.sub(body, 1, 180):gsub("%c"," ")
-        Tab:CreateParagraph({
-            Title = "Manager load error",
-            Text  = e2 .. "\nPreview: " .. snippet
+    local placeId = game.PlaceId
+    local ctx = mgr.byPlace and mgr.byPlace[placeId]
+
+    if not ctx then
+        -- Freundlicher Fallback ohne Error
+        Tab:SetTitle("Current Game")
+        Tab:CreateSection("No scripts for this game (yet)")
+        Tab:CreateLabel({ Text = "PlaceId: "..tostring(placeId), Style = 2 })
+        Tab:CreateButton({
+            Name = "Copy PlaceId",
+            Callback = function()
+                setclipboard(tostring(placeId))
+                Luna:Notification({ Title="Copied", Icon="check_circle", ImageSource="Material", Content="PlaceId copied" })
+            end
         })
         return
     end
 
-    if type(cfg) ~= "table" or type(cfg.byUniverse) ~= "table" then
-        Tab:CreateLabel({ Text = "Manager format error: missing byUniverse table", Style = 3 })
+    -- Tab-Titel aus Manager
+    if ctx.name then Tab:SetTitle(ctx.name) end
+    Tab:CreateSection((ctx.name or "Current Game") .. " – Scripts")
+
+    local gameMod, gerr = safeload(ctx.module)
+    if not gameMod then
+        Tab:CreateLabel({ Text = "Game module load error:\n" .. tostring(gerr), Style = 3 })
         return
     end
 
-    -- 2) Eintrag für aktuelles Spiel (UniverseId = game.GameId)
-    local uid = game.GameId
-    local entry = cfg.byUniverse[uid]
-    if not entry then
-        Tab:CreateParagraph({
-            Title = "No game entry",
-            Text  = "No configuration for UniverseId "..tostring(uid).." was found in manager.lua."
-        })
-        return
-    end
-    if type(entry.module) ~= "string" or entry.module == "" then
-        Tab:CreateLabel({ Text = "Manager entry has no 'module' URL.", Style = 3 })
-        return
-    end
-
-    -- 3) Titel anpassen
-    if entry.name and type(entry.name) == "string" and #entry.name > 0 then
-        Tab:SetTitle(entry.name)
-        Tab:CreateSection(entry.name)
-    end
-
-    -- 4) Spiel-spezifisches Modul laden und ausführen
-    local modBody, e3 = httpGet(entry.module)
-    if not modBody then
-        Tab:CreateLabel({ Text = "Game module load error: " .. e3, Style = 3 })
-        return
-    end
-
-    local mod, e4 = compile(modBody)
-    if not mod then
-        local snip = string.sub(modBody, 1, 180):gsub("%c"," ")
-        Tab:CreateParagraph({ Title = "Game module error", Text = e4 .. "\nPreview: " .. snip })
-        return
-    end
-
-    -- Übergibt ctx mit Name/IDs, falls du’s im Game-Tab brauchst
-    local ctx = {
-        universeId = uid,
-        placeId    = game.PlaceId,
-        name       = entry.name or "Current Game"
-    }
-
-    local okRun, errRun = pcall(mod, Tab, Luna, Window, ctx)
-    if not okRun then
-        Tab:CreateLabel({ Text = "Init error in game module: "..tostring(errRun), Style = 3 })
+    local ok, perr = pcall(gameMod, Tab, Luna, Window, {
+        name   = ctx.name or "Current Game",
+        module = ctx.module,
+        placeId = placeId,
+    })
+    if not ok then
+        Tab:CreateLabel({ Text = "Game module init error:\n" .. tostring(perr), Style = 3 })
     end
 end
