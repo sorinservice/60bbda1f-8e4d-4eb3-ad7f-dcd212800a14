@@ -2,7 +2,7 @@
 local HttpService = game:GetService("HttpService")
 
 -- 1) Load Luna-UI
-local lunaUrl = "https://raw.githubusercontent.com/sorinservice/luna-lib-remastered/main/luna_ui%20x%20sorin-ui.lua"
+local lunaUrl = "https://raw.githubusercontent.com/sorinservice/luna-lib-remastered/main/luna-ui.lua"
 local Luna = loadstring(game:HttpGet(lunaUrl))()
 
 -- Safe wrappers for optional API
