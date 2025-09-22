@@ -12,5 +12,11 @@ return {
              name   = "RealisticCarDriving",
              module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/RealisticCarDriving.lua",
          },
+        
+
+        [79546208627805] = { -- RealisticCarDriving PlaceID
+             name   = "99 Nights In The Forest",
+             module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/99NightsInTheForest.lua",
+         },
     },
 }
