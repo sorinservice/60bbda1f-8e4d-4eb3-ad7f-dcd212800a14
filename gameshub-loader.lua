@@ -18,7 +18,7 @@ local Window = Luna:CreateWindow({
     LogoID = "77656423525793",
     LoadingEnabled = true,
     LoadingTitle = "Sorin Loader",
-    LoadingSubtitle = "Initializing…",
+    LoadingSubtitle = "Loading",
     ConfigSettings = { RootFolder = nil, ConfigFolder = "SorinHubConfig" },
     KeySystem = false,
     KeySettings = { Title="SorinHub Key", Subtitle="Key System", Note="Enter your key", SaveInRoot=false, SaveKey=true, Key={"SorinHub"}, SecondAction={Enabled=false,Type="Link",Parameter=""} }
