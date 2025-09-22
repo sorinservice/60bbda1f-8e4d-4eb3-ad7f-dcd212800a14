@@ -1,13 +1,16 @@
 -- current-game/manager.lua
-print("Test 0.1")
+-- Einfache 1:1-Map: PlaceId -> (Name, Modul-URL)
 return {
-    byUniverse = {
-        [7711635737] = { -- Emergency Hamburg (UniverseId)
+    byPlace = {
+        [7711635737] = {  -- Emergency Hamburg PlaceId
             name   = "Emergency Hamburg",
             module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/EmergencyHamburg.lua",
         },
 
-        -- weitere Spiele hier…
-        -- [1234567890] = { name = "My Game", module = "https://raw.githubusercontent.com/.../MyGame.lua" },
+        -- weitere Spiele:
+        -- [1234567890] = {
+        --     name   = "My Other Game",
+        --     module = "https://raw.githubusercontent.com/.../current-game/games/MyOtherGame.lua",
+        -- },
     },
 }
