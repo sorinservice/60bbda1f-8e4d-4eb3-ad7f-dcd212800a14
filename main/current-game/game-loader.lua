@@ -1,27 +1,32 @@
--- current-game/game-loader.lua
 return function(Tab, Luna, Window, ctx)
-    -- If the loader already gave us ctx, use it; otherwise show a friendly fallback.
+    -- Fallback: kein ctx (Game nicht in manager.lua)
     if not ctx then
-        Tab:CreateSection("Current Game — Scripts")
-        Tab:CreateLabel({ Text = "No scripts for this game (yet).", Style = 2 })
-        Tab:CreateButton({
-            Name = "Copy PlaceId",
-            Description = "Copy current PlaceId to clipboard",
-            Callback = function()
-                setclipboard(tostring(game.PlaceId))
-                Luna:Notification({ Title="Copied", Icon="check_circle", ImageSource="Material", Content="PlaceId copied" })
-            end
-        })
+        Tab:SetIcon("error_outline") -- icon auf error
+        Tab:CreateSection("Current Game — Unsupported")
+        Tab:CreateLabel({ Text = "No scripts available for this game.", Style = 2 })
+
+        -- Statt CopyPlaceId → Liste aller unterstützen Spiele (mit deiner Library)
+        local ok, gamesLoader = pcall(function()
+            return loadstring(game:HttpGet("https://raw.githubusercontent.com/sorinservice/unlogged-scripts/refs/heads/main/loader.lua"))()
+        end)
+
+        if ok and gamesLoader then
+            gamesLoader(Tab, Luna, Window, ctx) -- dein anderer Loader wird einfach in diesen Tab gerendert
+        else
+            Tab:CreateLabel({ Text = "Error loading supported games list.", Style = 3 })
+        end
+
         return
     end
 
-    -- Title & section exactly once
+    -- Wenn ctx gefunden: Standard-Pfad
+    Tab:SetIcon("data_usage") -- icon auf data
     if ctx.name then
-        pcall(function() Tab:SetTitle(ctx.name) end) -- some Luna builds may not have SetTitle
+        pcall(function() Tab:SetTitle(ctx.name) end)
     end
     Tab:CreateSection((ctx.name or "Current Game") .. " — Scripts")
 
-    -- Pull the game module once and run it
+    -- Rest unverändert …
     local okBody, body = pcall(function() return game:HttpGet(ctx.module) end)
     if not okBody then
         Tab:CreateLabel({ Text = "Game module load error:\n" .. tostring(body), Style = 3 })
@@ -33,25 +38,14 @@ return function(Tab, Luna, Window, ctx)
         return
     end
 
-    local okRun, err = pcall(fn)
-    if not okRun or type(err) ~= "function" then
-        -- when loadstring succeeds, calling it returns the module function
-        local modFn = okRun and err or nil
-        if not modFn then
-            Tab:CreateLabel({ Text = "Game module invalid export.", Style = 3 })
-            return
-        end
+    local okRun, res = pcall(fn)
+    local modFn = okRun and res or nil
+    if type(modFn) == "function" then
         local okCall, perr = pcall(modFn, Tab, Luna, Window, ctx)
         if not okCall then
             Tab:CreateLabel({ Text = "Game module init error:\n" .. tostring(perr), Style = 3 })
         end
-        return
-    end
-
-    -- If we got here, 'err' is actually the module function
-    local mod = err
-    local okCall, perr = pcall(mod, Tab, Luna, Window, ctx)
-    if not okCall then
-        Tab:CreateLabel({ Text = "Game module init error:\n" .. tostring(perr), Style = 3 })
+    else
+        Tab:CreateLabel({ Text = "Game module invalid export.", Style = 3 })
     end
 end
