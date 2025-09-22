@@ -1,17 +1,17 @@
+-- current-game/game-loader.lua
 return function(Tab, Luna, Window, ctx)
-    -- Fallback: kein ctx (Game nicht in manager.lua)
+    -- Wenn kein ctx übergeben wurde → Spiel nicht unterstützt
     if not ctx then
-        Tab:SetIcon("error_outline") -- icon auf error
         Tab:CreateSection("Current Game — Unsupported")
         Tab:CreateLabel({ Text = "No scripts available for this game.", Style = 2 })
 
-        -- Statt CopyPlaceId → Liste aller unterstützen Spiele (mit deiner Library)
+        -- Statt PlaceId-Kopieren → zeige Liste aller unterstützten Games
         local ok, gamesLoader = pcall(function()
             return loadstring(game:HttpGet("https://raw.githubusercontent.com/sorinservice/unlogged-scripts/refs/heads/main/loader.lua"))()
         end)
 
         if ok and gamesLoader then
-            gamesLoader(Tab, Luna, Window, ctx) -- dein anderer Loader wird einfach in diesen Tab gerendert
+            gamesLoader(Tab, Luna, Window, ctx)
         else
             Tab:CreateLabel({ Text = "Error loading supported games list.", Style = 3 })
         end
@@ -19,19 +19,19 @@ return function(Tab, Luna, Window, ctx)
         return
     end
 
-    -- Wenn ctx gefunden: Standard-Pfad
-    Tab:SetIcon("data_usage") -- icon auf data
+    -- ctx vorhanden → Game ist unterstützt
     if ctx.name then
         pcall(function() Tab:SetTitle(ctx.name) end)
     end
     Tab:CreateSection((ctx.name or "Current Game") .. " — Scripts")
 
-    -- Rest unverändert …
+    -- Modul laden
     local okBody, body = pcall(function() return game:HttpGet(ctx.module) end)
     if not okBody then
         Tab:CreateLabel({ Text = "Game module load error:\n" .. tostring(body), Style = 3 })
         return
     end
+
     local fn, lerr = loadstring(body)
     if not fn then
         Tab:CreateLabel({ Text = "Game module compile error:\n" .. tostring(lerr), Style = 3 })
