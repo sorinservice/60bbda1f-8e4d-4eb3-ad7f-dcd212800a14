@@ -1,5 +1,5 @@
 -- current-game/manager.lua
-print("Test1")
+print("Test 0.1")
 return {
     byUniverse = {
         [7711635737] = { -- Emergency Hamburg (UniverseId)
