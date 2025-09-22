@@ -1,4 +1,4 @@
--- HubSettings.lua
+-- HubSettings.lua (angepasst)
 -- Luna-UI Tab: Hub Settings (Auto Execute + Performance + Hub Info + Credits)
 
 return function(Tab, Luna, Window)
@@ -18,11 +18,13 @@ return function(Tab, Luna, Window)
     local AUTOEXEC_URL    = "https://scripts.sorinservice.online/sorin/script_hub.lua"
     local AUTOEXEC_FILE   = "SorinHubAutoExec.lua"
 
-    -- realistische Kandidaten (der erste der klappt, wird benutzt)
+    -- Erweiterte Kandidaten (basierend auf Executors wie Fluxus, Krnl, Synapse)
     local CANDIDATE_DIRS = {
-        "autoexec", "AutoExec", "AutoExecute",
-        "workspace/autoexec", "scripts/autoexec",
-        "" -- root als letzter Versuch
+        "autoexec", "AutoExec", "AutoExecute", "autoexecute",  -- Standard
+        "workspace/autoexec", "scripts/autoexec",  -- Workspace-Varianten
+        "Fluxus/Autoexs", "fluxus/autoexec",  -- Fluxus-spezifisch (Android)
+        "Krnl/autoexec", "Synapse/autoexec",  -- Executor-spezifisch
+        ""  -- Root als Fallback
     }
 
     ----------------------------------------------------------------
@@ -75,26 +77,7 @@ return function(Tab, Luna, Window)
     local autoexecEnabled   = false
     local autoexecPath      = nil
     local sessionExecURL    = nil -- fallback, wenn writefile fehlt
-
-    local function setLabelText(el, txt)
-        -- defensiv: keine Fehler, falls dein UI kein SetText hat
-        if el and type(el.SetText) == "function" then
-            pcall(function() el:SetText(txt) end)
-            return true
-        end
-        if el and type(el.SetContent) == "function" then
-            pcall(function() el:SetContent(txt) end)
-            return true
-        end
-        return false
-    end
-
-    ----------------------------------------------------------------
-    -- UI
-    Tab:CreateSection("HubSettings")
-
-    -- Toggle Auto Execute
-    local pathInfo = Tab:CreateLabel({ Text = "Autoexec: (aus)", Style = 2 })
+    local sessionQueued     = false  -- Flag, um zu tracken, ob queued
 
     local function updatePathInfo()
         if autoexecPath then
@@ -105,6 +88,13 @@ return function(Tab, Luna, Window)
             setLabelText(pathInfo, "Autoexec: (aus)")
         end
     end
+
+    ----------------------------------------------------------------
+    -- UI
+    Tab:CreateSection("HubSettings")
+
+    -- Toggle Auto Execute
+    local pathInfo = Tab:CreateLabel({ Text = "Autoexec: (aus)", Style = 2 })
 
     local toggle = Tab:CreateToggle({
         Name = "Enable auto execute",
@@ -123,21 +113,28 @@ return function(Tab, Luna, Window)
                         if ok and safeIsFile(file) then
                             autoexecPath = file
                             sessionExecURL = nil
+                            sessionQueued = false
                             wrote = true
                             Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Saved: "..file })
                             break
+                        else
+                            Luna:Notification({ Title="Autoexec Debug", Icon="warning", ImageSource="Material", Content="Failed path "..file..": "..(err or "unknown") })
                         end
                     end
                     if not wrote then
                         -- Datei nicht schreibbar → Session-Modus
                         sessionExecURL = AUTOEXEC_URL
                         autoexecPath = nil
+                        sessionQueued = true
+                        queueOnTeleport(content)  -- content, nicht URL (für Zuverlässigkeit)
                         Luna:Notification({ Title="Autoexec", Icon="warning", ImageSource="Material", Content="Kann nicht speichern → Session-only aktiv." })
                     end
                 else
                     -- kein FS → Session-Modus
                     sessionExecURL = AUTOEXEC_URL
                     autoexecPath = nil
+                    sessionQueued = true
+                    queueOnTeleport(makeAutoexecContent(AUTOEXEC_URL))
                     Luna:Notification({ Title="Autoexec", Icon="warning", ImageSource="Material", Content="writefile nicht vorhanden → Session-only aktiv." })
                 end
 
@@ -147,11 +144,8 @@ return function(Tab, Luna, Window)
                     loadstring(code)()
                 end)
 
-                -- Für Spielwechsel (ohne Roblox/Executor neu zu starten)
-                queueOnTeleport(('pcall(function() loadstring(game:HttpGet("%s"))() end)'):format(AUTOEXEC_URL))
-
             else
-                -- AUS: Datei entfernen (wenn möglich) + Session clear
+                -- AUS: Datei entfernen (wenn möglich) + Session clear (kann nicht, also Flag reset)
                 if autoexecPath then
                     if safeDelete(autoexecPath) then
                         Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Removed: "..autoexecPath })
@@ -159,6 +153,7 @@ return function(Tab, Luna, Window)
                 end
                 autoexecPath   = nil
                 sessionExecURL = nil
+                sessionQueued  = false
                 Luna:Notification({ Title="Autoexec", Icon="info", ImageSource="Material", Content="Autoexec disabled." })
             end
             updatePathInfo()
@@ -175,6 +170,7 @@ return function(Tab, Luna, Window)
                 autoexecPath = nil
             end
             sessionExecURL = nil
+            sessionQueued = false
             if removed then
                 Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Removed file." })
             else
@@ -213,9 +209,13 @@ return function(Tab, Luna, Window)
     local function safeSetParagraph(el, txt)
         if el and type(el.SetText) == "function" then
             pcall(function() el:SetText(txt) end)
-            return
+            return true
         end
-        -- falls kein SetText existiert, nicht crashen (dein UI zeigt dann statisch den letzten Wert)
+        if el and type(el.SetContent) == "function" then
+            pcall(function() el:SetContent(txt) end)
+            return true
+        end
+        return false
     end
 
     -- FPS messen
@@ -236,28 +236,27 @@ return function(Tab, Luna, Window)
             local okMem, kb = pcall(collectgarbage, "count")
             if okMem and kb then memStr = string.format("%.1fMB (Lua)", kb/1024) end
 
-            -- Ping/Netzwerk best-effort
+            -- Ping/Netzwerk best-effort (angepasst mit GetNetworkPing)
             local pingStr, netStr = "N/A", "N/A"
             local okPing, pingVal = pcall(function()
+                return LP:GetNetworkPing()  -- Modernere API, falls verfügbar
+            end)
+            if okPing and pingVal then
+                pingStr = tostring(math.floor(pingVal)).."ms"
+            else
+                -- Fallback auf Stats
                 if Stats and Stats.Network and Stats.Network.ServerStatsItem then
                     local it = Stats.Network.ServerStatsItem
                     local candidates = {"Data Ping","DataPing","Ping","PingMs"}
                     for _,k in ipairs(candidates) do
                         local item = it[k]
-                        if item then
-                            if type(item.GetValue) == "function" then
-                                local v = item:GetValue()
-                                if tonumber(v) then return tonumber(v) end
-                            end
-                            if item.Value and tonumber(item.Value) then
-                                return tonumber(item.Value)
-                            end
+                        if item and type(item.GetValue) == "function" then
+                            local v = item:GetValue()
+                            if tonumber(v) then pingStr = tostring(math.floor(v)).."ms" break end
                         end
                     end
                 end
-                return nil
-            end)
-            if okPing and pingVal then pingStr = tostring(math.floor(pingVal)).."ms" end
+            end
 
             local okRecv, recv = pcall(function()
                 if Stats and Stats.Network and Stats.Network.ServerStatsItem then
@@ -271,6 +270,12 @@ return function(Tab, Luna, Window)
             end)
             if okRecv and recv then
                 netStr = tostring(math.floor(tonumber(recv))).."KB/s"
+            else
+                -- Fallback: Total Data Rate
+                local okTotal, total = pcall(function()
+                    return Stats:GetTotalDataReceiveRate()  -- Globale Rate
+                end)
+                if okTotal and total then netStr = tostring(math.floor(total)).."KB/s" end
             end
 
             local text = ("FPS: %d\nPing: %s\nMemory: %s\nNetwork: %s")
