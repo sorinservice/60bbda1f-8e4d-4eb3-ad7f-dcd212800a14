@@ -59,7 +59,7 @@ return function(Tab, Luna, Window, ctx)
     -- Define your scripts (URLs preferred). We’ll sort by name:
     local scripts = {
         { name = "Voidware",   url = "https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/nightsintheforest.lua", subtext = "I dont now. is this good? Never tested before" },
-        { name = "H4Scripts",  url = "https://raw.githubusercontent.com/H4xScripts/Loader/refs/heads/main/loader.lua", recommended = true },
+        { name = "H4Scripts",  url = "https://raw.githubusercontent.com/H4xScripts/Loader/refs/heads/main/loader.lua", subtext = "Needs a Key", recommended = true },
     }
 
     -- Sort alphabetically by display name
