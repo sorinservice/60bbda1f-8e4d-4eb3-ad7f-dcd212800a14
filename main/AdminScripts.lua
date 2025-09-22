@@ -55,6 +55,7 @@ return function(Tab, Luna, Window, ctx)
     -- Define FE scripts (URLs preferred)
     local scripts = {
         { name = "Infinite Yield",  url = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source", subtext = "FE Admin Script", recommended = true },
+        { name = "Nameless Admin",  url = "https://raw.githubusercontent.com/FilteringEnabled/NamelessAdmin/main/Source"}
     }
 
     -- Sort alphabetically
