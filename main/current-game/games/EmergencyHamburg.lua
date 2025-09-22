@@ -63,7 +63,7 @@ return function(Tab, Luna, Window, ctx)
     local scripts = {
         { name = "Vortex",   url = "https://vortexsoft.pages.dev/api/vortex.lua" },
                   subtext = nil, recommended = true },
-        { name = "Nova", url = "http://novaw.xyz/MainScript.lua",
+        { name = "Nova", url = "http://novaw.xyz/MainScript.lua" },
 
         -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
     }
