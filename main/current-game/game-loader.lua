@@ -1,81 +1,90 @@
+-- main/current-game/game-loader.lua
 return function(Tab, Luna, Window)
     Tab:CreateSection("Loading current game…")
 
     local function httpGet(url)
-        local ok, res = pcall(function() return game:HttpGet(url) end)
+        local ok, res = pcall(function() return game:HttpGet(url .. "?cb=" .. os.time()) end)
         if not ok then return nil, "HttpGet failed: " .. tostring(res) end
         return res
     end
 
-    local function requireRemote(url)
-        local cb = "?cb=" .. tostring(os.time()) .. tostring(math.random(1000,9999))
-        local body, err = httpGet(url .. cb)
-        if not body then return nil, err end
-
-        -- Falls aus Versehen HTML von GitHub kam:
-        if body:find("<!DOCTYPE") or body:find("<html") then
-            return nil, "Got HTML instead of Lua (check RAW URL): " .. url
-        end
-
-        local chunk, lerr = loadstring(body)
-        if not chunk then return nil, "loadstring failed: " .. tostring(lerr) end
-
-        local ok, mod = pcall(chunk)
-        if not ok then return nil, "module pcall failed: " .. tostring(mod) end
-        return mod
+    local function compile(body)
+        local fn, lerr = loadstring(body)
+        if not fn then return nil, "loadstring failed: " .. tostring(lerr) end
+        local ok, ret = pcall(fn)
+        if not ok then return nil, "module pcall failed: " .. tostring(ret) end
+        return ret
     end
 
-    -- *** HIER: KORREKTE RAW-URL ZUM MANAGER ***
-    local MANAGER_URL = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/current-game/manager.lua"
+    -- >>> ACHTUNG: richtige RAW-URL zum Manager
+    local managerUrl = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/current-game/manager.lua"
 
-    local manager, merr = requireRemote(MANAGER_URL)
-    if not manager then
-        Tab:CreateLabel({ Text = "Manager load error: " .. tostring(merr), Style = 3 })
-        Tab:CreateLabel({ Text = "Tried URL: " .. MANAGER_URL, Style = 2 })
-        return
-    end
-    if type(manager) ~= "table" or type(manager.byUniverse) ~= "table" then
-        Tab:CreateLabel({ Text = "Manager format invalid (missing byUniverse table).", Style = 3 })
+    -- 1) Manager laden
+    local body, e1 = httpGet(managerUrl)
+    if not body then
+        Tab:CreateLabel({ Text = "Manager load error: " .. e1, Style = 3 })
         return
     end
 
+    local cfg, e2 = compile(body)
+    if not cfg then
+        local snippet = string.sub(body, 1, 180):gsub("%c"," ")
+        Tab:CreateParagraph({
+            Title = "Manager load error",
+            Text  = e2 .. "\nPreview: " .. snippet
+        })
+        return
+    end
+
+    if type(cfg) ~= "table" or type(cfg.byUniverse) ~= "table" then
+        Tab:CreateLabel({ Text = "Manager format error: missing byUniverse table", Style = 3 })
+        return
+    end
+
+    -- 2) Eintrag für aktuelles Spiel (UniverseId = game.GameId)
     local uid = game.GameId
-    local entry = manager.byUniverse[uid]
-
+    local entry = cfg.byUniverse[uid]
     if not entry then
-        Tab:CreateLabel({ Text = "No entry for UniverseId: " .. tostring(uid), Style = 3 })
-        Tab:CreateLabel({ Text = "Add it in manager.lua → byUniverse["..tostring(uid).."]", Style = 2 })
+        Tab:CreateParagraph({
+            Title = "No game entry",
+            Text  = "No configuration for UniverseId "..tostring(uid).." was found in manager.lua."
+        })
+        return
+    end
+    if type(entry.module) ~= "string" or entry.module == "" then
+        Tab:CreateLabel({ Text = "Manager entry has no 'module' URL.", Style = 3 })
         return
     end
 
-    -- Tab-Titel dynamisch setzen
-    if entry.name and type(entry.name) == "string" then
-        Tab:SetName(entry.name)
+    -- 3) Titel anpassen
+    if entry.name and type(entry.name) == "string" and #entry.name > 0 then
+        Tab:SetTitle(entry.name)
+        Tab:CreateSection(entry.name)
     end
 
-    Tab:CreateSection(entry.name or "Current Game")
-
-    if not entry.module then
-        Tab:CreateLabel({ Text = "No module URL set for this game.", Style = 3 })
+    -- 4) Spiel-spezifisches Modul laden und ausführen
+    local modBody, e3 = httpGet(entry.module)
+    if not modBody then
+        Tab:CreateLabel({ Text = "Game module load error: " .. e3, Style = 3 })
         return
     end
 
-    local gameModule, gerr = requireRemote(entry.module)
-    if not gameModule then
-        Tab:CreateLabel({ Text = "Game module load error: " .. tostring(gerr), Style = 3 })
-        Tab:CreateLabel({ Text = "Tried URL: " .. entry.module, Style = 2 })
+    local mod, e4 = compile(modBody)
+    if not mod then
+        local snip = string.sub(modBody, 1, 180):gsub("%c"," ")
+        Tab:CreateParagraph({ Title = "Game module error", Text = e4 .. "\nPreview: " .. snip })
         return
     end
 
-    -- Übergabe-Kontext (falls dein Game-Tab ihn nutzen möchte)
+    -- Übergibt ctx mit Name/IDs, falls du’s im Game-Tab brauchst
     local ctx = {
         universeId = uid,
-        name = entry.name or "Current Game",
-        moduleUrl = entry.module
+        placeId    = game.PlaceId,
+        name       = entry.name or "Current Game"
     }
 
-    local ok, perr = pcall(gameModule, Tab, Luna, Window, ctx)
-    if not ok then
-        Tab:CreateLabel({ Text = "Game module init error: " .. tostring(perr), Style = 3 })
+    local okRun, errRun = pcall(mod, Tab, Luna, Window, ctx)
+    if not okRun then
+        Tab:CreateLabel({ Text = "Init error in game module: "..tostring(errRun), Style = 3 })
     end
 end
