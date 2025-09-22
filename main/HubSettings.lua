@@ -6,9 +6,9 @@ return function(Tab, Luna, Window)
     -- Config you can maintain manually
     local HUB = {
         version    = "v0.1",
-        lastUpdate = "2025-09-22",
-        gamesCount = "450+",
-        scriptsCnt = "1300+",
+        lastUpdate = "22.09.2025",
+        gamesCount = "1",
+        scriptsCnt = "3",
         -- your loader that should be auto-executed:
         autoexecCode = 'loadstring(game:HttpGet("https://scripts.sorinservice.online/sorin/script_hub.lua"))()',
         autoexecFile = "sorin_hub_autoexec.lua",
