@@ -1,4 +1,5 @@
 -- current-game/manager.lua
+print("Test1")
 return {
     byUniverse = {
         [2992873140] = { -- Emergency Hamburg (UniverseId)
