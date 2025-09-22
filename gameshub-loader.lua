@@ -34,6 +34,7 @@ Luna:Notification({ Title="SorinHub", Icon="sparkle", ImageSource="Material", Co
 -- 3) Remote modules
 local TABS = {
     Developer   = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Developer.lua",
+    FEScripts   = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/FE-Scripts.lua"
     CurrentGame = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/game-loader.lua",
     ManagerCfg  = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua",
     HubSettings = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubSettings.lua",
@@ -79,6 +80,7 @@ local preCtx = nil do
 end
 
 -- 6) Create tabs (now they'll appear already titled & populated)
+attachTab("FE Scripts"),    TABS.FEScripts,    "insert_emoticon")
 attachTab("Developer",      TABS.Developer,    "extension")
 attachTab("HubSettings",    TABS.HubSettings,  "settings")
 attachTab(currentGameTitle, TABS.CurrentGame,  "data_usage", preCtx)
