@@ -8,21 +8,36 @@ return function(Tab, Luna, Window, ctx)
             Style = 2
         })
 
-        -- Unterstützte Spiele anzeigen
-        local ok, gamesLoader = pcall(function()
-            return loadstring(game:HttpGet(
-                "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/refs/heads/main/loader.lua"
-            ))()
-        end)
+        -- Button zum Laden der Supported Games List
+        Tab:CreateButton({
+            Name = "Show Supported Games",
+            Description = "Open the list of supported games.",
+            Callback = function()
+                local ok, loaderFn = pcall(function()
+                    return loadstring(game:HttpGet(
+                        "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/refs/heads/main/loader.lua"
+                    ))
+                end)
 
-        if ok and type(gamesLoader) == "function" then
-            gamesLoader(Tab, Luna, Window, ctx)
-        else
-            Tab:CreateLabel({
-                Text = "Error loading supported games list.",
-                Style = 3
-            })
-        end
+                if ok and type(loaderFn) == "function" then
+                    local okRun, err = pcall(function()
+                        loaderFn()(Tab, Luna, Window, ctx)
+                    end)
+                    if not okRun then
+                        Tab:CreateLabel({
+                            Text = "Error running supported games list:\n" .. tostring(err),
+                            Style = 3
+                        })
+                    end
+                else
+                    Tab:CreateLabel({
+                        Text = "Error loading supported games list.",
+                        Style = 3
+                    })
+                end
+            end
+        })
+
         return
     end
 
