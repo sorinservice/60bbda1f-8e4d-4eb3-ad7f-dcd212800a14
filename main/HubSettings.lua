@@ -1,5 +1,5 @@
 -- HubSettings.lua
--- Sorin Hub Settings Tab
+-- SorinHub: AutoExec, Performance, Hub Info, Credits
 
 return function(Tab, Luna, Window)
     local RunService = game:GetService("RunService")
@@ -17,10 +17,9 @@ return function(Tab, Luna, Window)
     local AUTOEXEC_URL    = "https://scripts.sorinservice.online/sorin/script_hub.lua"
     local AUTOEXEC_FILE   = "SorinHubAutoExec.lua"
 
+    -- nur echte Autoexec-Ordner
     local CANDIDATE_DIRS = {
-        "autoexec", "AutoExec", "AutoExecute", "autoexecute",
-        "workspace/autoexec", "scripts/autoexec",
-        "" -- root fallback
+        "autoexec", "AutoExec", "AutoExecute"
     }
 
     ----------------------------------------------------------------
@@ -28,11 +27,9 @@ return function(Tab, Luna, Window)
     local function has(fn) return type(fn) == "function" end
 
     local function safeWrite(path, content)
-        if has(writefile) then
-            local ok, err = pcall(writefile, path, content)
-            return ok, err
-        end
-        return false, "writefile not available"
+        if not has(writefile) then return false end
+        local ok, err = pcall(writefile, path, content)
+        return ok
     end
 
     local function safeDelete(path)
@@ -55,62 +52,95 @@ return function(Tab, Luna, Window)
     end
 
     ----------------------------------------------------------------
-    -- UI: Autoexec
-    Tab:CreateSection("HubSettings")
-
+    -- AUTOEXEC
+    local autoexecPath = nil
     local pathInfo = Tab:CreateLabel({ Text = "Autoexec: (aus)", Style = 2 })
 
-    Tab:CreateToggle({
+    local function updatePathInfo()
+        if autoexecPath then
+            pathInfo:SetText("Autoexec: " .. autoexecPath)
+        else
+            pathInfo:SetText("Autoexec: (aus)")
+        end
+    end
+
+    local toggle = Tab:CreateToggle({
         Name = "Enable auto execute",
         Enabled = false,
         Callback = function(state)
             if state then
-                local content = makeAutoexecContent(AUTOEXEC_URL)
-                local saved = false
-                for _, dir in ipairs(CANDIDATE_DIRS) do
-                    local file = (dir == "" and AUTOEXEC_FILE) or (dir.."/"..AUTOEXEC_FILE)
-                    local ok = safeWrite(file, content)
-                    if ok then
-                        pathInfo:SetText("Autoexec file: "..file)
-                        Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Saved: "..file })
-                        saved = true
-                        break
+                if has(writefile) then
+                    local content = makeAutoexecContent(AUTOEXEC_URL)
+                    local wrote = false
+                    for _, dir in ipairs(CANDIDATE_DIRS) do
+                        local file = dir .. "/" .. AUTOEXEC_FILE
+                        local ok = safeWrite(file, content)
+                        if ok then
+                            autoexecPath = file
+                            wrote = true
+                            Luna:Notification({
+                                Title="Autoexec",
+                                Icon="check_circle",
+                                ImageSource="Material",
+                                Content="Saved: " .. file
+                            })
+                            break
+                        end
                     end
-                end
-                if not saved then
-                    queueOnTeleport(content)
-                    pathInfo:SetText("Autoexec: session-only")
-                    Luna:Notification({ Title="Autoexec", Icon="warning", ImageSource="Material", Content="Session-only (not saved to disk)" })
+                    if not wrote then
+                        queueOnTeleport(content)
+                        Luna:Notification({
+                            Title="Autoexec",
+                            Icon="warning",
+                            ImageSource="Material",
+                            Content="Session-only aktiv (kein Schreibzugriff)"
+                        })
+                    end
+                else
+                    queueOnTeleport(makeAutoexecContent(AUTOEXEC_URL))
+                    Luna:Notification({
+                        Title="Autoexec",
+                        Icon="warning",
+                        ImageSource="Material",
+                        Content="Executor unterstützt writefile nicht → Session-only"
+                    })
                 end
             else
-                for _, dir in ipairs(CANDIDATE_DIRS) do
-                    local file = (dir == "" and AUTOEXEC_FILE) or (dir.."/"..AUTOEXEC_FILE)
-                    safeDelete(file)
+                if autoexecPath then
+                    if safeDelete(autoexecPath) then
+                        Luna:Notification({
+                            Title="Autoexec",
+                            Icon="check_circle",
+                            ImageSource="Material",
+                            Content="Removed: " .. autoexecPath
+                        })
+                    end
                 end
-                pathInfo:SetText("Autoexec: (aus)")
-                Luna:Notification({ Title="Autoexec", Icon="info", ImageSource="Material", Content="Removed autoexec" })
+                autoexecPath = nil
             end
+            updatePathInfo()
         end
     })
 
+    -- Destroy Hub Button
     Tab:CreateButton({
         Name = "Destroy Hub",
         Callback = function()
-            Window:Destroy()
-            Luna:Notification({ Title="Hub", Icon="delete", ImageSource="Material", Content="SorinHub closed." })
+            if Window and type(Window.Destroy) == "function" then
+                Window:Destroy()
+            else
+                game.CoreGui:ClearAllChildren()
+            end
         end
     })
 
     ----------------------------------------------------------------
     -- PERFORMANCE
-    Tab:CreateSection("Performance")
-
     local perfParagraph = Tab:CreateParagraph({
         Title = "Performance",
         Text  = "FPS: ...\nPing: ...\nMemory: ...\nNetwork Sent: ...\nNetwork Received: ..."
     })
 
-    -- FPS messen
     local frames, last = 0, tick()
     RunService.RenderStepped:Connect(function() frames += 1 end)
 
@@ -122,58 +152,58 @@ return function(Tab, Luna, Window)
             local fps = (elapsed > 0) and math.floor(frames/elapsed + 0.5) or 0
             frames, last = 0, now
 
+            -- Memory
+            local memStr = "N/A"
+            local okMem, kb = pcall(collectgarbage, "count")
+            if okMem and kb then
+                memStr = string.format("%.1f MB", kb/1024)
+            end
+
             -- Ping
-            local ping = "N/A"
-            local okPing, val = pcall(function() return LP:GetNetworkPing() end)
-            if okPing and val then ping = tostring(math.floor(val*1000)).."ms" end
+            local pingStr = "N/A"
+            local okPing, pingVal = pcall(function()
+                return LP:GetNetworkPing()
+            end)
+            if okPing and pingVal then
+                pingStr = tostring(math.floor(pingVal * 1000)).." ms"
+            end
 
-            -- Memory (Roblox Stats)
-            local mem = "N/A"
-            local okMem, valMem = pcall(function()
-                return Stats:GetTotalMemoryUsageMb()
+            -- Network Sent/Received
+            local sentStr, recvStr = "N/A", "N/A"
+            local okSent, sent = pcall(function()
+                return Stats:GetTotalDataSendRate()
             end)
-            if okMem and valMem then mem = tostring(math.floor(valMem)).." MB" end
-
-            -- Network
-            local sent, recv = "N/A", "N/A"
-            local ok1, s = pcall(function()
-                return Stats.Network.ServerStatsItem["Data Send Kbps"]:GetValue()
+            local okRecv, recv = pcall(function()
+                return Stats:GetTotalDataReceiveRate()
             end)
-            local ok2, r = pcall(function()
-                return Stats.Network.ServerStatsItem["Data Receive Kbps"]:GetValue()
-            end)
-            if ok1 and s then sent = tostring(math.floor(s)).." KB/s" end
-            if ok2 and r then recv = tostring(math.floor(r)).." KB/s" end
+            if okSent and sent then sentStr = tostring(math.floor(sent)).." KB/s" end
+            if okRecv and recv then recvStr = tostring(math.floor(recv)).." KB/s" end
 
             local text = ("FPS: %d\nPing: %s\nMemory: %s\nNetwork Sent: %s\nNetwork Received: %s")
-                :format(fps, ping, mem, sent, recv)
+                :format(fps, pingStr, memStr, sentStr, recvStr)
             perfParagraph:SetText(text)
         end
     end)
 
     ----------------------------------------------------------------
-    -- HUB INFO (als Block, Style 2)
+    -- HUB INFO
     local infoParagraph = Tab:CreateParagraph({
         Title = "Sorin Hub Info",
-        Text = ("Hub Version: %s\nLast Update: %s\nGames: %s\nScripts: %s")
+        Text  = ("Hub Version: %s\nLast Update: %s\nGames: %s\nScripts: %s")
             :format(HUB_VERSION, HUB_LASTUPDATE, HUB_GAMES, HUB_SCRIPTS)
     })
-    if infoParagraph.SetStyle then pcall(function() infoParagraph:SetStyle(2) end) end
 
     ----------------------------------------------------------------
     -- CREDITS
     Tab:CreateSection("Credits")
-
     Tab:CreateParagraph({
         Title = "Main Credits",
         Text  = "Nebula Softworks — Luna UI (Design & Code)"
     })
-
     Tab:CreateParagraph({
         Title = "SorinHub Credits",
         Text  = "SorinHub by SorinServices\ninvented by EndOfCircuit"
     })
-
     Tab:CreateLabel({
         Text  = "SorinHub Scriptloader - by SorinServices",
         Style = 2
