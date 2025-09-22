@@ -1,5 +1,5 @@
 -- current-game/manager.lua
--- Einfache 1:1-Map: PlaceId -> (Name, Modul-URL)
+print("Welcome Home")
 return {
     byPlace = {
         [7711635737] = {  -- Emergency Hamburg PlaceId
