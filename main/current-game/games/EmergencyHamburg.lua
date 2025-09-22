@@ -59,7 +59,8 @@ return function(Tab, Luna, Window, ctx)
     -- Define your scripts (URLs preferred). We’ll sort by name:
     local scripts = {
         { name = "Vortex",   url = "https://vortexsoft.pages.dev/api/vortex.lua", subtext = nil, recommended = true },
-        { name = "Nova",     url = "https://novaw.xyz/MainScript.lua" },
+        { name = "Nova",     url = "https://novaw.xyz/MainScript.lua", subtext = nil, recommended = false },
+        { name = "BeanzHub"  url= "https://raw.githubusercontent.com/pid4k/scripts/main/BeanzHub.lua", subtext = nil, recommended = false },
 
         -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
     }
