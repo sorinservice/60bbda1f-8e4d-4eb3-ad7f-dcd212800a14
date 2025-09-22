@@ -1,16 +1,12 @@
--- manager.lua
--- Map your games here. Prefer UniverseId (game.GameId); fall back to PlaceId.
+-- current-game/manager.lua
 return {
     byUniverse = {
-        [2992873140] = {  -- Emergency Hamburg (UniverseId)
+        [2992873140] = { -- Emergency Hamburg (UniverseId)
             name   = "Emergency Hamburg",
-            module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/refs/heads/main/main/current-game/games/EmergencyHamburg.lua",
+            module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/current-game/games/EmergencyHamburg.lua",
         },
 
-        -- Beispiel weiterer Titel:
-        [0] = {  -- <== ersetze 0 durch echte UniverseId
-            name   = "Game",
-            module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/current-game/games/Game.lua",
-        },
+        -- weitere Spiele hier…
+        -- [1234567890] = { name = "My Game", module = "https://raw.githubusercontent.com/.../MyGame.lua" },
     },
 }
