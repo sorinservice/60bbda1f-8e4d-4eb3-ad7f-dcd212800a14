@@ -80,7 +80,7 @@ local preCtx = nil do
 end
 
 -- 6) Create tabs (now they'll appear already titled & populated)
-attachTab("FE Scripts"),    TABS.FEScripts,    "insert_emoticon")
+attachTab("FE Scripts",    TABS.FEScripts,    "insert_emoticon")
 attachTab("Developer",      TABS.Developer,    "extension")
 attachTab("HubSettings",    TABS.HubSettings,  "settings")
 attachTab(currentGameTitle, TABS.CurrentGame,  "data_usage", preCtx)
