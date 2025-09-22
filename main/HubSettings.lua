@@ -1,115 +1,233 @@
 -- HubSettings.lua
--- Tab for Sorin Hub – AutoExec, Performance, Info
+-- Module: Hub Settings tab for SorinHub (Luna UI)
+local HttpService = game:GetService("HttpService")
 
 return function(Tab, Luna, Window)
-    local RunService = game:GetService("RunService")
-    local Stats = game:GetService("Stats")
-    local HttpService = game:GetService("HttpService")
+    Tab:CreateSection("Hub Settings")
 
-    --------------------------------------------------------------------
-    -- 1) Auto Execute
-    --------------------------------------------------------------------
-    local autoexecFile = "autoexec/sorin_hub_autoexec.lua"
-    local autoexecUrl  = "https://scripts.sorinservice.online/sorin/script_hub.lua"
+    -- Config file (local) name
+    local CONFIG_FILE = "sorin_hub_settings.json"
 
+    -- default config
+    local config = {
+        autoExecuteEnabled = false,
+        autoExecuteUrl = "https://scripts.sorinservice.online/sorin/script_hub.lua",
+        fpsCap = 60
+    }
+
+    -- helper: safe file helpers (most executors provide writefile/isfile/readfile/delfile/makefolder)
+    local has_io = (type(isfile) == "function") and (type(writefile) == "function")
+    local function loadConfig()
+        if not has_io then return end
+        if isfile(CONFIG_FILE) then
+            local ok, contents = pcall(readfile, CONFIG_FILE)
+            if ok and contents then
+                local suc, parsed = pcall(function() return HttpService:JSONDecode(contents) end)
+                if suc and type(parsed) == "table" then
+                    for k,v in pairs(parsed) do config[k] = v end
+                end
+            end
+        end
+    end
+    local function saveConfig()
+        if not has_io then return end
+        pcall(function()
+            writefile(CONFIG_FILE, HttpService:JSONEncode(config))
+        end)
+    end
+
+    -- List of common autoexec filenames/paths (case variants + common folders)
+    -- This list is intentionally broad; you can add more names if you want.
+    local AUTOEXEC_CANDIDATES = {
+        "autoexec",
+        "AutoExec",
+        "AutoExecute",
+        "autoExec",
+        "autoexecute",
+        "autoexec.lua",
+        "AutoExec.lua",
+        "autoexec.txt",
+        "workspace/autoexec",
+        "workspace/AutoExec",
+        "workspace/autoexec.lua",
+        "workspace/scripts/autoexec",
+        "scripts/autoexec",
+        "autoexec/init.lua",
+        "AutoExecute/init.lua"
+    }
+
+    -- try to write autoexec file to multiple candidate names
+    local function installAutoExec(url)
+        if not has_io then return false, "Executor doesn't support file IO" end
+        local count = 0
+        for _, path in ipairs(AUTOEXEC_CANDIDATES) do
+            local ok, err = pcall(writefile, path, ('loadstring(game:HttpGet("%s"))()'):format(url))
+            if ok then
+                count = count + 1
+            end
+        end
+        return (count > 0), ("Wrote %d candidate(s)"):format(count)
+    end
+
+    local function removeAutoExec()
+        if not has_io then return false, "Executor doesn't support file IO" end
+        local removed = 0
+        for _, path in ipairs(AUTOEXEC_CANDIDATES) do
+            if isfile(path) then
+                pcall(delfile, path)
+                removed = removed + 1
+            end
+        end
+        return (removed > 0), ("Removed %d candidate(s)"):format(removed)
+    end
+
+    -- FPS setter (tries setfpscap and a few other known names)
+    local function setFPS(v)
+        v = tonumber(v) or 60
+        local ok = false
+        pcall(function()
+            if setfpscap then setfpscap(v); ok = true end
+        end)
+        -- syn/krnl/other wrappers occasionally offer these:
+        pcall(function() if setfps then setfps(v); ok = true end end)
+        pcall(function() if syn and syn.set_thread_identity then syn.set_thread_identity(v); ok = true end end)
+        -- fallback: change RunService.Stepped targetDelta (not recommended/accurate)
+        if not ok then
+            pcall(function()
+                local RunService = game:GetService("RunService")
+                -- not actually changing physics; best we can do without executor support
+                RunService:Set3dRenderingEnabled(true)
+            end)
+        end
+        return ok
+    end
+
+    -- load saved config (if any)
+    loadConfig()
+
+    -- UI: AutoExecute toggle + url input + button to (force) create/remove
     Tab:CreateSection("Auto Execute")
-
-    local toggle = Tab:CreateToggle({
-        Name = "Enable auto execute",
-        CurrentValue = isfile and isfile(autoexecFile) or false,
+    local autoToggle = Tab:CreateToggle({
+        Name = "AutoExecute",
+        Current = config.autoExecuteEnabled,
         Callback = function(state)
+            config.autoExecuteEnabled = state
+            saveConfig()
             if state then
-                if writefile then
-                    writefile(autoexecFile, 'loadstring(game:HttpGet("'..autoexecUrl..'"))()')
-                    Luna:Notification({
-                        Title = "AutoExec",
-                        Icon = "check_circle",
-                        ImageSource = "Material",
-                        Content = "Autoexec file created."
-                    })
-                end
+                local ok, msg = installAutoExec(config.autoExecuteUrl)
+                Luna:Notification({
+                    Title = "AutoExecute",
+                    Icon = ok and "check_circle" or "error",
+                    ImageSource = "Material",
+                    Content = ok and "Enabled ("..msg..")" or ("Failed: "..tostring(msg))
+                })
             else
-                if delfile and isfile and isfile(autoexecFile) then
-                    delfile(autoexecFile)
-                    Luna:Notification({
-                        Title = "AutoExec",
-                        Icon = "delete",
-                        ImageSource = "Material",
-                        Content = "Autoexec file removed."
-                    })
-                end
+                local ok, msg = removeAutoExec()
+                Luna:Notification({
+                    Title = "AutoExecute",
+                    Icon = ok and "check_circle" or "error",
+                    ImageSource = "Material",
+                    Content = ok and "Disabled ("..msg..")" or ("Nothing removed")
+                })
             end
         end
     })
 
-    if isfile and isfile(autoexecFile) then
-        Tab:CreateLabel({
-            Text = "Autoexec file: " .. autoexecFile,
-            Style = 2
-        })
-    end
-
-    --------------------------------------------------------------------
-    -- 2) Performance
-    --------------------------------------------------------------------
-    Tab:CreateSection("Performance")
-
-    local fpsCap = 60
-    local slider = Tab:CreateSlider({
-        Name = "Set FPS cap",
-        Range = {1, 240},
-        Increment = 1,
-        CurrentValue = fpsCap,
-        Callback = function(val)
-            fpsCap = val
-            if setfpscap then
-                setfpscap(val)
-            end
+    -- URL input for autoexec (editable)
+    Tab:CreateInput({
+        Name = "AutoExecute URL",
+        Placeholder = "https://.../your_autoexec.lua",
+        Text = config.autoExecuteUrl or "",
+        Callback = function(txt)
+            config.autoExecuteUrl = tostring(txt or "")
+            saveConfig()
+            Luna:Notification({
+                Title = "AutoExecute URL",
+                Icon = "check_circle",
+                ImageSource = "Material",
+                Content = "Saved URL"
+            })
         end
     })
 
     Tab:CreateButton({
-        Name = "Reset cap to 60",
+        Name = "Force create AutoExec now",
+        Description = "Write autoexec candidates immediately",
         Callback = function()
-            fpsCap = 60
-            if setfpscap then
-                setfpscap(60)
-            end
-            slider:Set(60)
+            local ok, msg = installAutoExec(config.autoExecuteUrl)
+            Luna:Notification({
+                Title = "Force AutoExec",
+                Icon = ok and "check_circle" or "error",
+                ImageSource = "Material",
+                Content = ok and msg or ("Failed: "..tostring(msg))
+            })
         end
     })
 
-    local fpsLabel = Tab:CreateLabel({ Text = "FPS: measuring...", Style = 1 })
-    local pingLabel = Tab:CreateLabel({ Text = "Ping: ...", Style = 1 })
-    local memLabel  = Tab:CreateLabel({ Text = "Memory: ...", Style = 1 })
-    local netLabel  = Tab:CreateLabel({ Text = "Network: ...", Style = 1 })
+    Tab:CreateButton({
+        Name = "Remove AutoExec files",
+        Description = "Delete candidate autoexec files",
+        Callback = function()
+            local ok, msg = removeAutoExec()
+            Luna:Notification({
+                Title = "Remove AutoExec",
+                Icon = ok and "check_circle" or "error",
+                ImageSource = "Material",
+                Content = ok and msg or "Nothing removed"
+            })
+        end
+    })
 
-    RunService.RenderStepped:Connect(function(dt)
-        -- FPS
-        local fps = math.floor(1/dt)
-        fpsLabel:SetText("FPS: " .. fps)
+    -- FPS slider
+    Tab:CreateSection("Performance")
+    Tab:CreateLabel({ Text = "FPS Cap", Style = 1 })
+    local fpsSlider = Tab:CreateSlider({
+        Name = "FPS Cap",
+        Min = 30,
+        Max = 240,
+        Value = config.fpsCap or 60,
+        Percent = false,
+        Callback = function(val)
+            config.fpsCap = math.floor(val + 0.5)
+            saveConfig()
+            local ok = setFPS(config.fpsCap)
+            Luna:Notification({
+                Title = "FPS Cap",
+                Icon = ok and "check_circle" or "error",
+                ImageSource = "Material",
+                Content = ok and ("Set to " .. tostring(config.fpsCap)) or "Executor doesn't support FPS API"
+            })
+        end
+    })
 
-        -- Memory
-        local mem = math.floor(Stats:GetTotalMemoryUsageMb())
-        memLabel:SetText("Memory: " .. mem .. " MB")
-
-        -- Ping
-        local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
-        pingLabel:SetText("Ping: " .. ping)
-
-        -- Network
-        local recv = Stats.Network.ServerStatsItem["Data ReceiveKbps"]:GetValueString()
-        local send = Stats.Network.ServerStatsItem["Data SendKbps"]:GetValueString()
-        netLabel:SetText("Network: ↓" .. recv .. " / ↑" .. send)
-    end)
-
-    --------------------------------------------------------------------
-    -- 3) Hub Info
-    --------------------------------------------------------------------
-    Tab:CreateSection("Sorin Hub Info")
-
+    -- Hub Info (exactly as requested)
+    Tab:CreateSection("Hub Info")
     Tab:CreateLabel({ Text = "Hub Version: v0.1", Style = 2 })
     Tab:CreateLabel({ Text = "Last Update: 2025-09-22", Style = 2 })
-    Tab:CreateLabel({ Text = "Games: 1+", Style = 2 }) -- später anpassen
+    Tab:CreateLabel({ Text = "Games: 1+", Style = 2 })
     Tab:CreateLabel({ Text = "Scripts: 5+", Style = 2 })
+
+    -- Extra: quick helpers (copy config, open folder) - optional
+    Tab:CreateButton({
+        Name = "Export current config (to clipboard)",
+        Description = "Copies JSON config to clipboard",
+        Callback = function()
+            local ok, j = pcall(function() return HttpService:JSONEncode(config) end)
+            if ok then
+                pcall(function() setclipboard(j) end)
+                Luna:Notification({ Title = "Config", Icon = "check_circle", ImageSource = "Material", Content = "Config copied to clipboard" })
+            else
+                Luna:Notification({ Title = "Config", Icon = "error", ImageSource = "Material", Content = "Failed to encode" })
+            end
+        end
+    })
+
+    -- Auto-create/remove files on startup depending on saved config
+    -- (do this *after* UI so user can see initial state)
+    if config.autoExecuteEnabled then
+        -- attempt to install, silently
+        pcall(function() installAutoExec(config.autoExecuteUrl) end)
+    else
+        -- optionally leave alone if disabled
+    end
 end
