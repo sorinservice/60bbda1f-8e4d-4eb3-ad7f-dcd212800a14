@@ -1,327 +1,314 @@
 -- HubSettings.lua
--- Luna-UI Tab: Hub Settings + Autoexecute handler + Performance display
+-- Luna-UI Tab: Hub Settings (Auto Execute + Performance + Hub Info + Credits)
+
 return function(Tab, Luna, Window)
     local RunService = game:GetService("RunService")
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
+    local Players    = game:GetService("Players")
+    local Stats      = game:GetService("Stats")
+    local LP         = Players.LocalPlayer
 
     ----------------------------------------------------------------
-    -- Config
-    local AUTOEXEC_FILENAME = "SorinHubAutoExec.lua" -- Dateiname, den wir anlegen
+    -- CONFIG
+    local HUB_VERSION     = "v0.1"
+    local HUB_LASTUPDATE  = "2025-09-22"
+    local HUB_GAMES       = "1+"
+    local HUB_SCRIPTS     = "5+"
+
+    -- Das soll beim Auto-Execute geladen werden:
+    local AUTOEXEC_URL    = "https://scripts.sorinservice.online/sorin/script_hub.lua"
+    local AUTOEXEC_FILE   = "SorinHubAutoExec.lua"
+
+    -- realistische Kandidaten (der erste der klappt, wird benutzt)
     local CANDIDATE_DIRS = {
-        "autoexec", "AutoExec", "AutoExecute", "autoexec/scripts",
-        "scripts/autoexec", "workspace/autoexec", "" -- "" = root
+        "autoexec", "AutoExec", "AutoExecute",
+        "workspace/autoexec", "scripts/autoexec",
+        "" -- root als letzter Versuch
     }
-    local DEFAULT_AUTOEXEC_URL = "https://raw.githubusercontent.com/sorinservice/your-repo/main/autoexec.lua"
-    local HUB_VERSION = "v0.1"
-    local HUB_LASTUPDATE = "2025-09-22"
-    local HUB_GAMES = "1+"
-    local HUB_SCRIPTS = "5+"
 
     ----------------------------------------------------------------
-    -- Small helpers for file APIs
-    local function canWriteFiles()
-        return type(writefile) == "function"
+    -- EXECUTOR/FS HELPERS (defensiv)
+    local function has(fn) return type(fn) == "function" end
+
+    local function safeMakeFolder(path)
+        if path == "" then return true end
+        if has(makefolder) then pcall(makefolder, path) end
+        return true
     end
-    local function canDeleteFiles()
-        return type(isfile) == "function" and type(delfile) == "function"
+
+    local function safeIsFile(path)
+        if has(isfile) then
+            local ok, exists = pcall(isfile, path)
+            return ok and exists or false
+        end
+        return false
     end
-    local function ensureFolder(folder)
-        if folder == "" then return true end
-        if type(makefolder) == "function" then
-            pcall(makefolder, folder)
+
+    local function safeWrite(path, content)
+        if not has(writefile) then return false, "writefile not available" end
+        local ok, err = pcall(writefile, path, content)
+        if not ok then return false, tostring(err) end
+        return true
+    end
+
+    local function safeDelete(path)
+        if has(isfile) and has(delfile) and safeIsFile(path) then
+            pcall(delfile, path)
             return true
         end
-        return true -- some implementations create path automatically on writefile
+        return false
     end
 
-    local function writeFileTry(path, content)
-        if type(writefile) ~= "function" then
-            return false, "writefile not available"
-        end
-        local ok, err = pcall(writefile, path, content)
-        if ok then return true end
-        return false, tostring(err)
+    local function queueOnTeleport(code)
+        local q = rawget(getfenv(), "queue_on_teleport")
+                  or (syn and syn.queue_on_teleport)
+                  or rawget(getfenv(), "queueonteleport")
+        if has(q) then pcall(q, code) end
     end
 
-    local function removeFileIfExists(path)
-        if type(isfile) ~= "function" or type(delfile) ~= "function" then
-            return false, "isfile/delfile not available"
-        end
-        local ok, exists = pcall(isfile, path)
-        if ok and exists then
-            pcall(delfile, path)
-            return true, "removed"
-        end
-        return false, "not found"
+    local function makeAutoexecContent(url)
+        url = tostring(url or AUTOEXEC_URL)
+        return ('pcall(function() loadstring(game:HttpGet("%s"))() end)'):format(url)
     end
 
     ----------------------------------------------------------------
-    -- Build the autoexec file content
-    local function makeAutoexecContent(execUrl)
-        execUrl = tostring(execUrl or DEFAULT_AUTOEXEC_URL)
-        -- use pcall wrapper so executor doesn't break if loadstring fails
-        return string.format([[pcall(function() loadstring(game:HttpGet("%s"))() end)]], execUrl)
-    end
+    -- AUTOEXEC STATE
+    local autoexecEnabled   = false
+    local autoexecPath      = nil
+    local sessionExecURL    = nil -- fallback, wenn writefile fehlt
 
-    -- Find first writable candidate and write the file there
-    local function installAutoexecToFirst(execUrl)
-        if not canWriteFiles() then
-            return false, "writefile not available"
+    local function setLabelText(el, txt)
+        -- defensiv: keine Fehler, falls dein UI kein SetText hat
+        if el and type(el.SetText) == "function" then
+            pcall(function() el:SetText(txt) end)
+            return true
         end
-
-        local content = makeAutoexecContent(execUrl)
-        for _, dir in ipairs(CANDIDATE_DIRS) do
-            local filename = (dir == "" and AUTOEXEC_FILENAME) or (dir .. "/" .. AUTOEXEC_FILENAME)
-            -- ensure folder if possible
-            ensureFolder(dir)
-            local ok, err = writeFileTry(filename, content)
-            if ok then
-                return true, filename
-            end
-            -- otherwise try next candidate
+        if el and type(el.SetContent) == "function" then
+            pcall(function() el:SetContent(txt) end)
+            return true
         end
-        return false, "none of the candidate paths writable"
+        return false
     end
 
     ----------------------------------------------------------------
-    -- Session fallback: store execUrl in memory if writefile not present
-    local sessionAutoexec = nil
-    local function setSessionAutoexec(execUrl)
-        sessionAutoexec = execUrl
-    end
-    local function clearSessionAutoexec()
-        sessionAutoexec = nil
-    end
-
-    ----------------------------------------------------------------
-    -- Execute autoexec right now (either from file or session)
-    local function executeAutoexecFromPath(path, execUrl)
-        -- If path is provided and file API exists, try running it by reading it
-        if path and type(isfile) == "function" and isfile(path) then
-            -- try to load file content (not always available to read) - fallback to execUrl
-            if type(readfile) == "function" then
-                local ok, body = pcall(readfile, path)
-                if ok and type(body) == "string" and #body > 0 then
-                    local fn, lerr = loadstring(body)
-                    if fn then
-                        pcall(fn)
-                        return true, "executed file content"
-                    end
-                end
-            end
-        end
-
-        -- fallback to direct URL execution
-        if execUrl and #execUrl > 0 then
-            local ok, err = pcall(function()
-                local code = game:HttpGet(execUrl)
-                loadstring(code)()
-            end)
-            if ok then return true, "executed url" end
-            return false, "exec error: "..tostring(err)
-        end
-
-        return false, "no executable content"
-    end
-
-    ----------------------------------------------------------------
-    -- UI state
-    local currentAutoexecPath = nil
-    local autoexecEnabled = false
-    local autoexecUrl = DEFAULT_AUTOEXEC_URL
-
-    ----------------------------------------------------------------
-    -- UI: create the controls
+    -- UI
     Tab:CreateSection("HubSettings")
 
-    -- Auto Execute toggle + info row
+    -- Toggle Auto Execute
+    local pathInfo = Tab:CreateLabel({ Text = "Autoexec: (aus)", Style = 2 })
+
+    local function updatePathInfo()
+        if autoexecPath then
+            setLabelText(pathInfo, "Autoexec file: " .. autoexecPath)
+        elseif sessionExecURL then
+            setLabelText(pathInfo, "Autoexec: session-only ("..sessionExecURL..")")
+        else
+            setLabelText(pathInfo, "Autoexec: (aus)")
+        end
+    end
+
     local toggle = Tab:CreateToggle({
         Name = "Enable auto execute",
         Enabled = false,
         Callback = function(state)
             autoexecEnabled = state
             if state then
-                -- Try to write to first candidate
-                if canWriteFiles() then
-                    local ok, result = installAutoexecToFirst(autoexecUrl)
-                    if ok then
-                        currentAutoexecPath = result
-                        Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Wrote autoexec to: "..result })
-                        -- execute immediately
-                        local eok, emsg = executeAutoexecFromPath(currentAutoexecPath, autoexecUrl)
-                        if eok then
-                            Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Autoexec executed." })
-                        else
-                            Luna:Notification({ Title="Autoexec", Icon="error", ImageSource="Material", Content="Executed failed: "..(emsg or "unknown") })
+                -- Versuch: Datei anlegen
+                if has(writefile) then
+                    local content = makeAutoexecContent(AUTOEXEC_URL)
+                    local wrote = false
+                    for _, dir in ipairs(CANDIDATE_DIRS) do
+                        local file = (dir == "" and AUTOEXEC_FILE) or (dir .. "/" .. AUTOEXEC_FILE)
+                        safeMakeFolder(dir)
+                        local ok, err = safeWrite(file, content)
+                        if ok and safeIsFile(file) then
+                            autoexecPath = file
+                            sessionExecURL = nil
+                            wrote = true
+                            Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Saved: "..file })
+                            break
                         end
-                    else
-                        -- writefile present but couldn't write anywhere
-                        Luna:Notification({ Title="Autoexec", Icon="error", ImageSource="Material", Content="Can't write autoexec: "..tostring(result) })
+                    end
+                    if not wrote then
+                        -- Datei nicht schreibbar → Session-Modus
+                        sessionExecURL = AUTOEXEC_URL
+                        autoexecPath = nil
+                        Luna:Notification({ Title="Autoexec", Icon="warning", ImageSource="Material", Content="Kann nicht speichern → Session-only aktiv." })
                     end
                 else
-                    -- session fallback
-                    setSessionAutoexec(autoexecUrl)
-                    Luna:Notification({ Title="Autoexec", Icon="warning", ImageSource="Material", Content="writefile not available — session-only autoexec enabled." })
-                    -- execute now from URL
-                    local ek, em = executeAutoexecFromPath(nil, autoexecUrl)
-                    if ek then
-                        Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Autoexec executed (session)." })
-                    else
-                        Luna:Notification({ Title="Autoexec", Icon="error", ImageSource="Material", Content="Execute failed: "..tostring(em) })
-                    end
+                    -- kein FS → Session-Modus
+                    sessionExecURL = AUTOEXEC_URL
+                    autoexecPath = nil
+                    Luna:Notification({ Title="Autoexec", Icon="warning", ImageSource="Material", Content="writefile nicht vorhanden → Session-only aktiv." })
                 end
+
+                -- Sofort ausführen (jetzt)
+                pcall(function()
+                    local code = game:HttpGet(AUTOEXEC_URL)
+                    loadstring(code)()
+                end)
+
+                -- Für Spielwechsel (ohne Roblox/Executor neu zu starten)
+                queueOnTeleport(('pcall(function() loadstring(game:HttpGet("%s"))() end)'):format(AUTOEXEC_URL))
+
             else
-                -- disable: remove file if possible, clear session fallback
-                if currentAutoexecPath and canDeleteFiles() then
-                    local rok, rmsg = removeFileIfExists(currentAutoexecPath)
-                    if rok then
-                        Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Removed: "..currentAutoexecPath })
-                        currentAutoexecPath = nil
+                -- AUS: Datei entfernen (wenn möglich) + Session clear
+                if autoexecPath then
+                    if safeDelete(autoexecPath) then
+                        Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Removed: "..autoexecPath })
                     end
                 end
-                clearSessionAutoexec()
+                autoexecPath   = nil
+                sessionExecURL = nil
                 Luna:Notification({ Title="Autoexec", Icon="info", ImageSource="Material", Content="Autoexec disabled." })
             end
+            updatePathInfo()
         end
     })
 
-    -- Row: show actual autoexec file path (or session hint)
-    local pathLabel = Tab:CreateLabel({ Text = "Autoexec file: (not set)", Style = 2 })
-
-    local function updatePathLabel()
-        if currentAutoexecPath then
-            pathLabel:SetText("Autoexec file: " .. tostring(currentAutoexecPath))
-        elseif sessionAutoexec then
-            pathLabel:SetText("Autoexec: session-only (" .. tostring(sessionAutoexec) .. ")")
-        else
-            pathLabel:SetText("Autoexec file: (not set)")
-        end
-    end
-
-    -- Button to remove (explicit)
+    -- remove button
     Tab:CreateButton({
         Name = "Remove Autoexec",
         Callback = function()
-            if currentAutoexecPath and canDeleteFiles() then
-                local ok, msg = removeFileIfExists(currentAutoexecPath)
-                if ok then
-                    Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Removed file." })
-                    currentAutoexecPath = nil
-                    updatePathLabel()
-                else
-                    Luna:Notification({ Title="Autoexec", Icon="error", ImageSource="Material", Content="Remove failed: "..tostring(msg) })
-                end
-            else
-                clearSessionAutoexec()
-                Luna:Notification({ Title="Autoexec", Icon="info", ImageSource="Material", Content="Session autoexec cleared." })
+            local removed = false
+            if autoexecPath then
+                removed = safeDelete(autoexecPath)
+                autoexecPath = nil
             end
+            sessionExecURL = nil
+            if removed then
+                Luna:Notification({ Title="Autoexec", Icon="check_circle", ImageSource="Material", Content="Removed file." })
+            else
+                Luna:Notification({ Title="Autoexec", Icon="info", ImageSource="Material", Content="Session cleared." })
+            end
+            updatePathInfo()
         end
     })
 
-    -- Input row for URL (simple approach via Button that copies default to clipboard for edit outside)
-    Tab:CreateButton({
-        Name = "Copy default autoexec URL (edit in repo if needed)",
-        Callback = function()
-            pcall(function() setclipboard(tostring(autoexecUrl)) end)
-            Luna:Notification({ Title="Autoexec", Icon="info", ImageSource="Material", Content="URL copied to clipboard." })
-        end
-    })
+    updatePathInfo()
 
+    ----------------------------------------------------------------
+    -- PERFORMANCE (ein Block, der sich aktualisiert)
     Tab:CreateSection("Performance")
 
-    -- FPS slider (just visual control for a notional cap)
-    local fpsValue = 120
-    local fpsSlider = Tab:CreateSlider({
-        Name = "Set FPS cap",
-        Min = 30,
-        Max = 240,
-        Value = fpsValue,
+    -- FPS Cap Slider (setzt nur, wenn Executor API vorhanden)
+    local fpsCap = 120
+    Tab:CreateSlider({
+        Name = "Set FPS",
+        Min = 30, Max = 240, Value = fpsCap,
         Callback = function(v)
-            fpsValue = math.floor(v)
-            -- Note: setting real FPS cap depends on executor API; here we only show value
-            Luna:Notification({ Title="FPS", Icon="sparkle", ImageSource="Material", Content="Set target FPS: "..tostring(fpsValue) })
+            fpsCap = math.floor(v)
+            local setcap = rawget(getfenv(), "setfpscap")
+            if type(setcap) == "function" then
+                pcall(setcap, fpsCap)
+            end
         end
     })
 
-    -- Performance stat labels (we update them periodically)
-    local fpsLabel = Tab:CreateLabel({ Text = "FPS: measuring...", Style = 1 })
-    local pingLabel = Tab:CreateLabel({ Text = "Ping: ...", Style = 1 })
-    local memLabel = Tab:CreateLabel({ Text = "Memory: ...", Style = 1 })
-    local netLabel = Tab:CreateLabel({ Text = "Network: ...", Style = 1 })
+    -- Ein Paragraph-Block für alle Werte
+    local perfParagraph = Tab:CreateParagraph({
+        Title = "Performance",
+        Text  = "FPS: measuring...\nPing: ...\nMemory: ...\nNetwork: ..."
+    })
 
-    -- small helper to attempt ping/memory/network reads (best-effort)
-    local frameCount = 0
-    local fpsLastUpdate = tick()
-    local measuredFps = 0
+    local function safeSetParagraph(el, txt)
+        if el and type(el.SetText) == "function" then
+            pcall(function() el:SetText(txt) end)
+            return
+        end
+        -- falls kein SetText existiert, nicht crashen (dein UI zeigt dann statisch den letzten Wert)
+    end
 
-    RunService.RenderStepped:Connect(function()
-        frameCount = frameCount + 1
-    end)
+    -- FPS messen
+    local frames, last = 0, tick()
+    RunService.RenderStepped:Connect(function() frames += 1 end)
 
-    spawn(function()
+    -- jede Sekunde aktualisieren (defensiv)
+    task.spawn(function()
         while true do
-            wait(1)
-            -- FPS calc
+            task.wait(1)
             local now = tick()
-            local elapsed = now - fpsLastUpdate
-            if elapsed > 0 then
-                measuredFps = math.floor(frameCount / (elapsed) + 0.5)
-            else
-                measuredFps = 0
-            end
-            frameCount = 0
-            fpsLastUpdate = now
-            pcall(function() fpsLabel:SetText("FPS: "..tostring(measuredFps)) end)
+            local elapsed = now - last
+            local fps = (elapsed > 0) and math.floor(frames/elapsed + 0.5) or 0
+            frames, last = 0, now
 
-            -- Memory (Lua mem in MB)
-            local ok, luaKb = pcall(collectgarbage, "count")
-            if ok and luaKb then
-                local mb = string.format("%.1fMB (Lua)", luaKb/1024)
-                pcall(function() memLabel:SetText("Memory: "..mb) end)
-            else
-                pcall(function() memLabel:SetText("Memory: N/A") end)
-            end
+            -- Memory (Lua)
+            local memStr = "N/A"
+            local okMem, kb = pcall(collectgarbage, "count")
+            if okMem and kb then memStr = string.format("%.1fMB (Lua)", kb/1024) end
 
-            -- Ping & network (best-effort; depends on Roblox Stats API availability)
-            local pingStr = "N/A"
-            local netStr = "N/A"
+            -- Ping/Netzwerk best-effort
+            local pingStr, netStr = "N/A", "N/A"
             local okPing, pingVal = pcall(function()
-                local s = game:GetService("Stats")
-                if s and s.Network and s.Network.ServerStatsItem then
-                    local it = s.Network.ServerStatsItem
-                    -- keys vary: attempt a few common ones (works in many environments)
-                    local val = it:GetValue("Data Ping") or it:GetValue("DataPing") or it:GetValue("Ping") or it:GetValue("PingMs")
-                    return val
+                if Stats and Stats.Network and Stats.Network.ServerStatsItem then
+                    local it = Stats.Network.ServerStatsItem
+                    local candidates = {"Data Ping","DataPing","Ping","PingMs"}
+                    for _,k in ipairs(candidates) do
+                        local item = it[k]
+                        if item then
+                            if type(item.GetValue) == "function" then
+                                local v = item:GetValue()
+                                if tonumber(v) then return tonumber(v) end
+                            end
+                            if item.Value and tonumber(item.Value) then
+                                return tonumber(item.Value)
+                            end
+                        end
+                    end
                 end
                 return nil
             end)
             if okPing and pingVal then pingStr = tostring(math.floor(pingVal)).."ms" end
 
-            local okNet, netVal = pcall(function()
-                local s = game:GetService("Stats")
-                if s and s.Network and s.Network.NetworkReceive then
-                    -- older/newer apis differ; best-effort
-                    return tostring(s.Network.NetworkReceived) or nil
+            local okRecv, recv = pcall(function()
+                if Stats and Stats.Network and Stats.Network.ServerStatsItem then
+                    local it = Stats.Network.ServerStatsItem
+                    local r = it["Data Receive Kbps"] or it["DataReceiveKbps"]
+                    if r and type(r.GetValue) == "function" then
+                        return r:GetValue()
+                    end
                 end
                 return nil
             end)
-            if okNet and netVal then netStr = tostring/netVal end
+            if okRecv and recv then
+                netStr = tostring(math.floor(tonumber(recv))).."KB/s"
+            end
 
-            pcall(function() pingLabel:SetText("Ping: "..tostring(pingStr)) end)
-            pcall(function() netLabel:SetText("Network: "..tostring(netStr)) end)
+            local text = ("FPS: %d\nPing: %s\nMemory: %s\nNetwork: %s")
+                :format(fps, pingStr, memStr, netStr)
 
-            -- update path label occasionally
-            updatePathLabel()
+            safeSetParagraph(perfParagraph, text)
         end
     end)
 
-    Tab:CreateSection("Hub Info")
-    Tab:CreateLabel({ Text = "Hub Version: " .. HUB_VERSION, Style = 2 })
-    Tab:CreateLabel({ Text = "Last Update: " .. HUB_LASTUPDATE, Style = 2 })
-    Tab:CreateLabel({ Text = "Games: " .. HUB_GAMES, Style = 2 })
-    Tab:CreateLabel({ Text = "Scripts: " .. HUB_SCRIPTS, Style = 2 })
+    ----------------------------------------------------------------
+    -- HUB INFO (genau wie gewünscht)
+    Tab:CreateSection("Sorin Hub Info")
+    Tab:CreateLabel({ Text = "Hub Version: "..HUB_VERSION,   Style = 2 })
+    Tab:CreateLabel({ Text = "Last Update: "..HUB_LASTUPDATE, Style = 2 })
+    Tab:CreateLabel({ Text = "Games: "..HUB_GAMES,           Style = 2 })
+    Tab:CreateLabel({ Text = "Scripts: "..HUB_SCRIPTS,       Style = 2 })
 
-    -- finalize
-    updatePathLabel()
+    ----------------------------------------------------------------
+    -- CREDITS (dein Block)
+    Tab:CreateSection("Credits")
+
+    Tab:CreateParagraph({
+        Title = "Main Credits",
+        Text  = table.concat({
+            "Nebula Softworks — Luna UI (Design & Code)"
+        }, "\n")
+    })
+
+    Tab:CreateParagraph({
+        Title = "SorinHub Credits",
+        Text  = table.concat({
+            "SorinHub by SorinServices",
+            "invented by EndOfCircuit"
+        }, "\n")
+    })
+
+    Tab:CreateLabel({
+        Text  = "SorinHub Scriptloader - by SorinServices",
+        Style = 2
+    })
 end
