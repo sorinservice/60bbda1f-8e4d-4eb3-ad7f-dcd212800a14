@@ -15,7 +15,7 @@ return function(Tab, Luna, Window, ctx)
 
         Tab:CreateButton({
             Name = title,
-            Description = opts.description or "Execute this script",
+            Description = opts.description or "",
             Callback = function()
                 local ok, err = pcall(function()
                     if opts.raw then
@@ -48,10 +48,10 @@ return function(Tab, Luna, Window, ctx)
     ----------------------------------------------------------------
     -- Define FE scripts (URLs preferred)
     local scripts = {
-        { name = "FE Trolling GUI", url = "https://pastebin.com/raw/xyz123" },
-        { name = "Lear Hub",        url = "https://raw.githubusercontent.com/yofriendfromschool1/Sky-Hub/main/SkyHub.txt", subtext = "Trolling functions and more" },
-        { name = "FE Super Lag",    url = "https://pastebin.com/raw/GBmWn4eZ" },
-        { name = "FE Fling All",    url = "https://pastebin.com/raw/zqyDSUWX" },
+        { name = "Sky Hub",        url = "https://raw.githubusercontent.com/yofriendfromschool1/Sky-Hub/main/SkyHub.txt" },
+        { name = "FE Super Lag",   url = "https://pastebin.com/raw/GBmWn4eZ" },
+        { name = "FE Fling All",   url = "https://pastebin.com/raw/zqyDSUWX" },
+        { name = "Piano Sheet",    url = "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/main/talentless.lua", subtext = "Talentless by HELLOHELLOHELLO012321", recommended = true},
     }
 
     -- Sort alphabetically
