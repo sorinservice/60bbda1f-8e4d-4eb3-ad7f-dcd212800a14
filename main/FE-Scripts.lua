@@ -5,17 +5,23 @@ return function(Tab, Luna, Window, ctx)
     local function addScript(displayName, source, opts)
         opts = opts or {}
 
+        -- Titel für den Button
         local title = displayName
         if opts.subtext and #opts.subtext > 0 then
             title = title .. " — " .. opts.subtext
         end
-        if opts.recommended and not opts.description then
-            opts.description = "✓ Recommended by Sorin"
+
+        -- Beschreibung (nur wenn vorhanden oder empfohlen)
+        local description = nil
+        if opts.description and #opts.description > 0 then
+            description = opts.description
+        elseif opts.recommended then
+            description = "✓ Recommended by Sorin"
         end
 
         Tab:CreateButton({
             Name = title,
-            Description = opts.description or "",
+            Description = description, -- nil = keine Description
             Callback = function()
                 local ok, err = pcall(function()
                     if opts.raw then
@@ -48,21 +54,21 @@ return function(Tab, Luna, Window, ctx)
     ----------------------------------------------------------------
     -- Define FE scripts (URLs preferred)
     local scripts = {
-        { name = "Sky Hub",        url = "https://raw.githubusercontent.com/yofriendfromschool1/Sky-Hub/main/SkyHub.txt" },
-        { name = "FE Super Lag",   url = "https://pastebin.com/raw/GBmWn4eZ" },
-        { name = "FE Fling All",   url = "https://pastebin.com/raw/zqyDSUWX" },
-        { name = "Piano Sheet",    url = "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/main/talentless.lua", subtext = "Talentless by HELLOHELLOHELLO012321", recommended = true},
+        { name = "Sky Hub",      url = "https://raw.githubusercontent.com/yofriendfromschool1/Sky-Hub/main/SkyHub.txt" },
+        { name = "FE Super Lag", url = "https://pastebin.com/raw/GBmWn4eZ" },
+        { name = "FE Fling All", url = "https://pastebin.com/raw/zqyDSUWX" },
+        { name = "Piano Sheet",  url = "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/main/talentless.lua", subtext = "Talentless by HELLOHELLOHELLO012321", recommended = true },
     }
 
     -- Sort alphabetically
     table.sort(scripts, function(a,b) return a.name:lower() < b.name:lower() end)
 
-    -- Render
+    -- Render Buttons
     for _, s in ipairs(scripts) do
         addScript(
             s.name,
             s.url or s.raw,
-            { subtext = s.subtext, recommended = s.recommended, raw = s.isRaw }
+            { subtext = s.subtext, recommended = s.recommended, raw = s.isRaw, description = s.description }
         )
     end
 end
