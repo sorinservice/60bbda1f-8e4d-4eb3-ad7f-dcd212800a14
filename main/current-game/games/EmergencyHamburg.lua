@@ -13,10 +13,12 @@ return function(Tab, Luna, Window, ctx)
         if opts.subtext and #opts.subtext > 0 then
             title = title .. " — " .. opts.subtext
         end
-        if opts.recommended then
-            -- put “Recommended by Sorin” in the button’s description (cleaner than a lone green label)
-            opts.description = "Recommended by Sorin"
-        end
+if opts.recommended then
+    Tab:CreateLabel({
+        Text = "✓ Recommended by Sorin",
+        Style = 2 -- grün
+    })
+end
 
         Tab:CreateButton({
             Name = title,
