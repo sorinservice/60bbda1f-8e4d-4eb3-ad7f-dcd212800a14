@@ -1,11 +1,11 @@
 -- Developer.lua
-return function(Tab, Luna, Window)
+return function(Tab, Sorin, Window)
     local HttpService = game:GetService("HttpService")
     local Players = game:GetService("Players")
 
     local function copyAndNotify(label, value)
         setclipboard(tostring(value))
-        Luna:Notification({
+        Sorin:Notification({
             Title = "Copied",
             Icon = "check",
             ImageSource = "Material",
