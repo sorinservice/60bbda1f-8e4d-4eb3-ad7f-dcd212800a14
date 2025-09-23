@@ -1,5 +1,5 @@
 -- tabs/utility.lua
-return function(tab, Sorin, Window)
+return function(Tab, Sorin, Window)
 
     local Players = game:GetService("Players")
     local UserInputService = game:GetService("UserInputService")
@@ -15,13 +15,13 @@ return function(tab, Sorin, Window)
 
     ----------------------------------------------------------------
     -- Safe Enhancements
-    tab:AddSection({Name = "Safe Enhancements"})
+    Tab:CreateSection("Safe Enhancements")
 
     -- WalkSpeed
-    tab:AddSlider({
+    Tab:CreateSlider({
         Name = "WalkSpeed",
         Min = 16, Max = 100, Increment = 1,
-        Default = 16, Save = true, Flag = "util_walkspeed",
+        Default = 16, Flag = "util_walkspeed",
         Callback = function(val)
             local h = getHumanoid()
             if h then h.WalkSpeed = val end
@@ -29,10 +29,10 @@ return function(tab, Sorin, Window)
     })
 
     -- JumpPower
-    tab:AddSlider({
+    Tab:CreateSlider({
         Name = "JumpPower",
         Min = 50, Max = 250, Increment = 5,
-        Default = 50, Save = true, Flag = "util_jumppower",
+        Default = 50, Flag = "util_jumppower",
         Callback = function(val)
             local h = getHumanoid()
             if h then h.JumpPower = val end
@@ -40,20 +40,20 @@ return function(tab, Sorin, Window)
     })
 
     -- Max Zoom Distance
-    tab:AddSlider({
+    Tab:CreateSlider({
         Name = "Max Zoom Distance",
         Min = 12, Max = 1000, Increment = 5,
-        Default = 128, Save = true, Flag = "util_zoom",
+        Default = 128, Flag = "util_zoom",
         Callback = function(val)
             LP.CameraMaxZoomDistance = val
         end
     })
 
     -- Field of View
-    tab:AddSlider({
+    Tab:CreateSlider({
         Name = "Field of View",
         Min = 70, Max = 120, Increment = 1,
-        Default = 70, Save = true, Flag = "util_fov",
+        Default = 70, Flag = "util_fov",
         Callback = function(val)
             Camera.FieldOfView = val
         end
@@ -61,13 +61,13 @@ return function(tab, Sorin, Window)
 
     ----------------------------------------------------------------
     -- Dangerous Enhancements
-    tab:AddSection({Name = "Dangerous Enhancements"})
+    Tab:CreateSection("Dangerous Enhancements")
 
     -- Infinite Jump
     local infJump = false
-    tab:AddToggle({
+    Tab:CreateToggle({
         Name = "Infinite Jump",
-        Default = false, Save = true, Flag = "util_infjump",
+        Default = false, Flag = "util_infjump",
         Callback = function(state)
             infJump = state
         end
@@ -81,9 +81,9 @@ return function(tab, Sorin, Window)
     end)
 
     -- Anti-AFK
-    tab:AddToggle({
+    Tab:CreateToggle({
         Name = "Anti AFK",
-        Default = false, Save = true, Flag = "util_antiafk",
+        Default = false, Flag = "util_antiafk",
         Callback = function(state)
             if state then
                 for _,v in pairs(getconnections(LP.Idled)) do
@@ -98,10 +98,10 @@ return function(tab, Sorin, Window)
     })
 
     ----------------------------------------------------------------
-    -- Extra Buttons
-    tab:AddSection({Name = "Extras"})
+    -- Extras
+    Tab:CreateSection("Extras")
 
-    tab:AddButton({
+    Tab:CreateButton({
         Name = "Reset Character",
         Callback = function()
             LP.Character:BreakJoints()
