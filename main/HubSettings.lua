@@ -99,7 +99,7 @@ return function(Tab, Sorin, Window)
                 local s = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Send Kbps"]
                 local r = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Receive Kbps"]
                 if s and type(s.GetValue) == "function" then sent = tostring(math.floor(s:GetValue())) .. " KB/s" end
-                if r and type(r:GetValue) == "function" then recv = tostring(math.floor(r:GetValue())) .. " KB/s" end
+                if r and type(r.GetValue) == "function" then recv = tostring(math.floor(r:GetValue())) .. " KB/s" end
             end)
 
             local text = ("FPS: %d\nPing: %s\nMemory: %s\nNetwork Sent: %s\nNetwork Received: %s")
@@ -137,12 +137,12 @@ return function(Tab, Sorin, Window)
     Tab:CreateParagraph({
         Title = "Main Credits",
         Text = "Nebula Softworks — Luna UI (Design & Code)",
-        Style = 2  -- Komma hinzugefügt
+        Style = 2
     })
     Tab:CreateParagraph({
         Title = "SorinHub Credits",
         Text = "SorinSoftware Services — Luna UI (Code modifications & SorinHub Scripts)",
-        Style = 2  -- Komma hinzugefügt
+        Style = 2
     })
     Tab:CreateLabel({
         Text = "SorinHub Scriptloader — by SorinSoftware Services",
