@@ -23,7 +23,6 @@ return function(Tab, Sorin, Window)
             else
                 pcall(function() game.CoreGui:ClearAllChildren() end)
             end
-            print("[SorinHub] Hub destroyed")
         end
     })
 
@@ -51,23 +50,21 @@ return function(Tab, Sorin, Window)
         Style = 2
     })
 
-    -- Optional: Debugging (entferne nach Test)
-    print("[DEBUG] Checking perfParagraph methods:")
-    for key, value in pairs(getmetatable(perfParagraph) or perfParagraph) do
-        print("[DEBUG] Method:", key, typeof(value))
-    end
-
-    -- lightweight FPS measurement using RenderStepped counter (low overhead)
+    -- lightweight FPS measurement using RenderStepped counter
     local frames = 0
     local lastTick = tick()
     RunService.RenderStepped:Connect(function() frames = frames + 1 end)
 
-    -- update loop every second; all pcall'd so it can't crash UI
+    -- Alternative Heartbeat measurement for accuracy
+    local heartbeatFrames = 0
+    RunService.Heartbeat:Connect(function() heartbeatFrames = heartbeatFrames + 1 end)
+
+    -- update loop every second
     task.spawn(function()
         while true do
             task.wait(1)
 
-            -- compute FPS in a safe way
+            -- compute FPS from RenderStepped
             local now = tick()
             local elapsed = now - lastTick
             local fps = 0
@@ -77,6 +74,17 @@ return function(Tab, Sorin, Window)
             frames = 0
             lastTick = now
 
+            -- compute FPS from Heartbeat as backup
+            local heartbeatElapsed = now - lastTick
+            local heartbeatFps = 0
+            if heartbeatElapsed > 0 then
+                heartbeatFps = math.floor((heartbeatFrames / heartbeatElapsed) + 0.5)
+            end
+            heartbeatFrames = 0
+
+            -- Use the higher FPS value for accuracy
+            fps = math.max(fps, heartbeatFps)
+
             -- memory via collectgarbage
             local mem = "N/A"
             pcall(function()
@@ -84,16 +92,16 @@ return function(Tab, Sorin, Window)
                 if kb then mem = string.format("%.1f MB", kb / 1024) end
             end)
 
-            -- ping: safe pcall to Stats if available
+            -- ping: safe pcall to Stats, simplified to raw value
             local ping = "N/A"
             pcall(function()
                 local item = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Ping"]
-                if item and type(item.GetValueString) == "function" then
-                    ping = item:GetValueString()
+                if item and type(item.GetValue) == "function" then
+                    ping = tostring(math.floor(item:GetValue())) -- Nur der numerische Wert
                 end
             end)
 
-            -- net: safe pcall
+            -- net: safe pcall (may remain N/A depending on executor/game)
             local sent, recv = "N/A", "N/A"
             pcall(function()
                 local s = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Send Kbps"]
@@ -103,20 +111,15 @@ return function(Tab, Sorin, Window)
             end)
 
             local text = ("FPS: %d\nPing: %s\nMemory: %s\nNetwork Sent: %s\nNetwork Received: %s")
-                :format(fps, ping or "N/A", mem, sent, recv)
-
-            print("[DEBUG] Updating text: ", text) -- Optional: Entferne nach Test
+                :format(fps, ping, mem, sent, recv)
 
             -- Text aktualisieren mit der Set-Methode
             pcall(function()
                 if perfParagraph then
                     perfParagraph:Set({
-                        Title = "Performance", -- Titel beibehalten
-                        Text = text -- Neuen Text setzen
+                        Title = "Performance",
+                        Text = text
                     })
-                    print("[DEBUG] Updated paragraph text")
-                else
-                    print("[ERROR] perfParagraph is nil")
                 end
             end)
         end
