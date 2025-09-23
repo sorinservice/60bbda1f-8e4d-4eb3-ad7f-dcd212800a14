@@ -1,5 +1,5 @@
 -- AdminScripts.lua
-return function(Tab, Luna, Window, ctx)
+return function(Tab, Sorin, Window, ctx)
 
     -- helper: add a script entry
     local function addScript(displayName, source, opts)
@@ -33,14 +33,14 @@ return function(Tab, Luna, Window, ctx)
                 end)
 
                 if ok then
-                    Luna:Notification({
+                    Sorin:Notification({
                         Title = displayName,
                         Icon = "check_circle",
                         ImageSource = "Material",
                         Content = "Executed successfully!"
                     })
                 else
-                    Luna:Notification({
+                    Sorin:Notification({
                         Title = displayName,
                         Icon = "error",
                         ImageSource = "Material",
