@@ -15,16 +15,22 @@ return function(Tab, Sorin, Window)
     ----------------------------------------------------------------
 
     -- Destroy Hub Button
-    Tab:CreateButton({
-        Name = "Destroy Hub",
-        Callback = function()
-            if Window and type(Window.Destroy) == "function" then
-                pcall(function() Window:Destroy() end)
-            else
-                pcall(function() game.CoreGui:ClearAllChildren() end)
+Tab:CreateButton({
+    Name = "Destroy Hub",
+    Callback = function()
+        -- try built-in destroy
+        if Window and type(Window.Destroy) == "function" then
+            pcall(function() Window:Destroy() end)
+        else
+            -- fallback: only remove Sorin UI ScreenGui, not all CoreGui
+            local gui = game.CoreGui:FindFirstChild("SorinUI") -- Name anpassen!
+            if gui then
+                gui:Destroy()
             end
         end
-    })
+    end
+})
+
 
     ----------------------------------------------------------------
     -- FPS CAP Slider (silent set, no spam)
