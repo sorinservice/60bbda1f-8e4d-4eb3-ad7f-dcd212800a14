@@ -1,4 +1,4 @@
--- FEScripts.lua
+-- FE-Scripts.lua
 return function(Tab, Sorin, Window, ctx)
 
     -- helper: add a script entry
