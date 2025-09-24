@@ -64,6 +64,17 @@ return function(Tab, Sorin, Window, ctx)
 
 
     ----------------------------------------------------------------
+    -- Aimbots + Silent Aim
+    Tab:CreateSection("Aimbots + Silent Aim")
+    local aimScripts = {
+        { name = "Universal Aimbot", url = "https://pastebin.com/raw/V16qnfcj" },
+    }
+    table.sort(aimScripts, function(a,b) return a.name:lower() < b.name:lower() end)
+    for _, s in ipairs(aimScripts) do
+        addScript(s.name, s.url or s.raw, s)
+    end
+
+    ----------------------------------------------------------------
     -- Admin Scripts
     Tab:CreateSection("Admin Scripts")
     local mainScripts = {
@@ -76,23 +87,10 @@ return function(Tab, Sorin, Window, ctx)
     end
     
     ----------------------------------------------------------------
-    -- Aimbots + Silent Aim
-    Tab:CreateSection("Aimbots + Silent Aim")
-    local aimScripts = {
-        { name = "Silent Aim v1", url = "https://example.com/silentaim.lua" },
-        { name = "Universal Aimbot", url = "https://example.com/aimbot.lua", recommended = true },
-    }
-    table.sort(aimScripts, function(a,b) return a.name:lower() < b.name:lower() end)
-    for _, s in ipairs(aimScripts) do
-        addScript(s.name, s.url or s.raw, s)
-    end
-
-    ----------------------------------------------------------------
     -- Utility Tools
     Tab:CreateSection("Utility Tools")
     local utilityScripts = {
         { name = "Dex Explorer", url = "https://raw.githubusercontent.com/infyiff/backup/main/dex.lua" },
-        { name = "Infinite Yield", url = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source", recommended = true },
     }
     table.sort(utilityScripts, function(a,b) return a.name:lower() < b.name:lower() end)
     for _, s in ipairs(utilityScripts) do
