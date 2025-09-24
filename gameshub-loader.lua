@@ -88,7 +88,6 @@ attachTab("FE Scripts",     TABS.FEScripts,            "insert_emoticon")
 attachTab("Universal Scripts",  TABS.UniversalScripts, "admin_panel_settings") 
 attachTab("Developer",      TABS.Developer,            "extension")
 attachTab("HubSettings",    TABS.HubSettings,          "settings")
-attachTab("Utility",       TABS.Utility,               "miscellaneous_services")
 
 -- Dynamisches Icon je nach Support
 local currentIcon = preCtx and "data_usage" or "_error_outline"
