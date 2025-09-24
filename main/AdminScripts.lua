@@ -56,10 +56,13 @@ return function(Tab, Sorin, Window, ctx)
     local scripts = {
         { name = "Infinite Yield",  url = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source", subtext = "FE Admin Script", recommended = true },
         { name = "Nameless Admin",  url = "https://raw.githubusercontent.com/FilteringEnabled/NamelessAdmin/main/Source"}
+        { name = "Fates Admin",     url = "https://raw.githubusercontent.com/fatesc/fates-admin/main/main.lua"}
     }
 
+    --[
     -- Sort alphabetically
     table.sort(scripts, function(a,b) return a.name:lower() < b.name:lower() end)
+    ]--
 
     -- Render Buttons
     for _, s in ipairs(scripts) do
