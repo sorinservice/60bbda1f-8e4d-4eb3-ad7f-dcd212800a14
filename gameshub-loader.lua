@@ -19,8 +19,8 @@ local Window = Sorin:CreateWindow({
     LoadingTitle = "Sorin Loader",
     LoadingSubtitle = "Loading",
     ConfigSettings = { RootFolder = nil, ConfigFolder = "SorinHubConfig" },
-    KeySystem = false,
-    KeySettings = { Title='SorinHub Key = "SorinScriptHub"', Subtitle="Key System", Note="Enter your key", SaveInRoot=false, SaveKey=true, Key={"SorinScriptHub"}, SecondAction={Enabled=true,Type="Link",Parameter="https://discord.gg/XC5hpQQvMX"} }
+    KeySystem = true,
+    KeySettings = { Title='SorinHub Key = "SorinScriptHub"', Subtitle="Key System", Note="Enter your key", SaveInRoot=false, SaveKey=true, Key={"SorinScriptsHub"}, SecondAction={Enabled=true,Type="Link",Parameter="https://discord.gg/XC5hpQQvMX"} }
 })
 
 -- try to hide while we fetch (if supported)
