@@ -52,16 +52,29 @@ return function(Tab, Sorin, Window, ctx)
     -- Main Scripts
     Tab:CreateSection("Main Scripts")
     local mainScripts = {
-        { name = "Wislr Universal Project", url = "https://example.com/wislr.lua", recommended = true },
-        { name = "Express Hub",             url = "https://example.com/express.lua", subtext = "With Key System" },
-        { name = "Foggy Hub",               url = "https://example.com/foggy.lua",   subtext = "With Key System" },
-        { name = "Sirius",                  url = "https://example.com/sirius.lua" },
+        { name = "Wislr Universal Project", url = "https://raw.githubusercontent.com/wisl884/wisl-i-Universal-Project1/main/Wisl'i%20Universal%20Project.lua" },
+        { name = "Express Hub",             url = "https://api.luarmor.net/files/v3/loaders/d8824b23a4d9f2e0d62b4e69397d206b.lua", subtext = "With Key System" },
+        { name = "Foggy Hub",               url = "https://raw.githubusercontent.com/FOGOTY/foggy-loader/refs/heads/main/loader",  subtext = "With Key System" },
+        { name = "Sirius",                  url = "https://sirius.menu/script" },
     }
     table.sort(mainScripts, function(a,b) return a.name:lower() < b.name:lower() end)
     for _, s in ipairs(mainScripts) do
         addScript(s.name, s.url or s.raw, s)
     end
 
+
+    ----------------------------------------------------------------
+    -- Admin Scripts
+    Tab:CreateSection("Admin Scripts")
+    local mainScripts = {
+        { name = "Infinite Yield",  url = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source", subtext = "FE Admin Script", recommended = true },
+        { name = "Nameless Admin",  url = "https://raw.githubusercontent.com/FilteringEnabled/NamelessAdmin/main/Source"},
+    }
+    table.sort(mainScripts, function(a,b) return a.name:lower() < b.name:lower() end)
+    for _, s in ipairs(mainScripts) do
+        addScript(s.name, s.url or s.raw, s)
+    end
+    
     ----------------------------------------------------------------
     -- Aimbots + Silent Aim
     Tab:CreateSection("Aimbots + Silent Aim")
