@@ -12,39 +12,47 @@ return function(Tab, Luna, Window, ctx)
             opts.description = "✓ Recommended by Sorin"
         end
 
-        Tab:CreateButton({
-            Name = title,
-            Description = opts.description, -- nur wenn gesetzt
-            Callback = function()
-                local ok, err = pcall(function()
-                    if opts.raw then
-                        assert(type(source) == "string" and #source > 0, "empty raw source")
-                        loadstring(source)()
-                    else
-                        local code = game:HttpGet(source)
-                        assert(type(code) == "string" and #code > 0, "failed to fetch code")
-                        loadstring(code)()
+Tab:CreateButton({
+    Name = title,
+    Description = opts.description,
+    Callback = function()
+        -- verschiebt die eigentliche Arbeit in einen eigenen Thread
+        task.spawn(function()
+            local ok, err = pcall(function()
+                if opts.raw then
+                    if type(source) ~= "string" or #source == 0 then
+                        error("empty raw source")
                     end
-                end)
-
-                if ok then
-                    Luna:Notification({
-                        Title = displayName,
-                        Icon = "check_circle",
-                        ImageSource = "Material",
-                        Content = "Executed successfully!"
-                    })
+                    loadstring(source)()
                 else
-                    Luna:Notification({
-                        Title = displayName,
-                        Icon = "error",
-                        ImageSource = "Material",
-                        Content = "Error: " .. tostring(err)
-                    })
+                    local code = game:HttpGet(source)
+                    if type(code) ~= "string" or #code == 0 then
+                        error("failed to fetch code")
+                    end
+                    loadstring(code)()
                 end
+            end)
+
+            if ok then
+                Luna:Notification({
+                    Title = displayName,
+                    Icon = "check_circle",
+                    ImageSource = "Material",
+                    Content = "Executed successfully!"
+                })
+            else
+                Luna:Notification({
+                    Title = displayName,
+                    Icon = "error",
+                    ImageSource = "Material",
+                    Content = "Error: " .. tostring(err)
+                })
             end
-        })
+        end)
+        -- <-- kein return, kein Error nach außen
     end
+})
+
 
     ----------------------------------------------------------------
     local scripts = {
