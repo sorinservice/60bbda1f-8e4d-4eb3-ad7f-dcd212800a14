@@ -1,4 +1,5 @@
-print("Major")-- current-game/games/EmergencyHamburg.lua
+print("Major Problem")
+-- current-game/games/EmergencyHamburg.lua
 return function(Tab, Sorin, Window, ctx)
 
     local function addScript(displayName, source, opts)
@@ -16,42 +17,40 @@ return function(Tab, Sorin, Window, ctx)
             Name = title,
             Description = opts.description, -- nur wenn gesetzt
             Callback = function()
-                task.spawn(function()
-                    -- 🔔 Pre-execution notification
-                    Sorin:Notification({
-                        Title = displayName .. " is being executed",
-                        Icon = "info",
-                        ImageSource = "Material",
-                        Content = "Please wait..."
-                    })
+                -- 🔔 Pre-execution notification
+                Sorin:Notification({
+                    Title = displayName .. " is being executed",
+                    Icon = "info",
+                    ImageSource = "Material",
+                    Content = "Please wait..."
+                })
 
-                    local ok, err = pcall(function()
-                        if opts.raw then
-                            assert(type(source) == "string" and #source > 0, "empty raw source")
-                            loadstring(source)()
-                        else
-                            local code = game:HttpGet(source)
-                            assert(type(code) == "string" and #code > 0, "failed to fetch code")
-                            loadstring(code)()
-                        end
-                    end)
-
-                    if ok then
-                        Sorin:Notification({
-                            Title = displayName,
-                            Icon = "check_circle",
-                            ImageSource = "Material",
-                            Content = "Executed successfully!"
-                        })
+                local ok, err = pcall(function()
+                    if opts.raw then
+                        assert(type(source) == "string" and #source > 0, "empty raw source")
+                        loadstring(source)()
                     else
-                        Sorin:Notification({
-                            Title = displayName,
-                            Icon = "error",
-                            ImageSource = "Material",
-                            Content = "Error: " .. tostring(err)
-                        })
+                        local code = game:HttpGet(source)
+                        assert(type(code) == "string" and #code > 0, "failed to fetch code")
+                        loadstring(code)()
                     end
                 end)
+
+                if ok then
+                    Sorin:Notification({
+                        Title = displayName,
+                        Icon = "check_circle",
+                        ImageSource = "Material",
+                        Content = "Executed successfully!"
+                    })
+                else
+                    Sorin:Notification({
+                        Title = displayName,
+                        Icon = "error",
+                        ImageSource = "Material",
+                        Content = "Error: " .. tostring(err)
+                    })
+                end
             end
         })
     end
