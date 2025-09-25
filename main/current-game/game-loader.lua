@@ -1,5 +1,5 @@
 -- current-game/game-loader.lua
-return function(Tab, Luna, Window, ctx)
+return function(Tab, Sorin, Window, ctx)
     -- Spiel unterstützt NICHT
     if not ctx then
         Tab:CreateSection("Current Game — Unsupported")
