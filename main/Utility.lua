@@ -190,14 +190,6 @@ return function(Tab, Sorin, Window)
         Name="Speed Boost (%) [0=off]", Min=0,Max=100,Default=0,Increment=1,
         Callback=function(v) BOOST.pct=v; if v>0 then startBoost() else stopBoost() end end
     })
-    Tab:CreateSlider({
-        Name="Max Zoom Distance [0=default]", Min=0,Max=2000,Default=0,Increment=10,
-        Callback=function(v) LP.CameraMaxZoomDistance = (v==0 and defaults.zoom or v) end
-    })
-    Tab:CreateSlider({
-        Name="Field of View Offset [-50..+50]", Min=-50,Max=50,Default=0,Increment=1,
-        Callback=function(v) Camera.FieldOfView = (v==0 and defaults.fov or math.clamp(defaults.fov+v,40,120)) end
-    })
     Tab:CreateToggle({
         Name="Anti AFK", Default=false,
         Callback=function(on) setAntiAFK(on) end
