@@ -19,7 +19,7 @@ return {
              module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/99NightsInTheForest.lua",
          },
 
-        [123821081589134 = { -- Break your Bones PlaceID
+        [123821081589134] = { -- Break your Bones PlaceID
              name   = "Break your Bones",
              module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/BreakYourBones.lua",
          },
