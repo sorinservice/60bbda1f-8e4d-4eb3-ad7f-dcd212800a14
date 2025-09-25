@@ -1,7 +1,7 @@
 --// Sorin Loader (Sorin-UI)
 local HttpService = game:GetService("HttpService")
 
--- 1) Load Luna-UI
+-- 1) Load Sorin-UI
 local Sorin = loadstring(game:HttpGet("https://raw.githubusercontent.com/sorinservice/script-libary/main/luna-ui.lua"))()
 
 -- Safe wrappers for optional API
@@ -58,7 +58,7 @@ local function attachTab(name, url, icon, ctx)
         Tab:CreateLabel({ Text = "Error loading '"..name.."': "..tostring(err), Style = 3 })
         return
     end
-    local ok, msg = pcall(mod, Tab, Luna, Window, ctx) -- pass ctx through
+    local ok, msg = pcall(mod, Tab, Sorin, Window, ctx) -- pass ctx through
     if not ok then
         Tab:CreateLabel({ Text = "Init error '"..name.."': "..tostring(msg), Style = 3 })
     end
