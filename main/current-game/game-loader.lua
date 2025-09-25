@@ -89,7 +89,7 @@ return function(Tab, Sorin, Window, ctx)
     local okRun, res = pcall(fn)
     local modFn = okRun and res or nil
     if type(modFn) == "function" then
-        local okCall, perr = pcall(modFn, Tab, Luna, Window, ctx)
+        local okCall, perr = pcall(modFn, Tab, Sorin, Window, ctx)
         if not okCall then
             Tab:CreateLabel({
                 Text = "Game module init error:\n" .. tostring(perr),
