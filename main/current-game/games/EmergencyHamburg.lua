@@ -1,4 +1,4 @@
--- current-game/games/EmergencyHamburg.lua
+print("Major")-- current-game/games/EmergencyHamburg.lua
 return function(Tab, Sorin, Window, ctx)
 
     local function addScript(displayName, source, opts)
