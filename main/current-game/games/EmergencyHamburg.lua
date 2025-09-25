@@ -1,5 +1,5 @@
 -- current-game/games/EmergencyHamburg.lua
-return function(Tab, Luna, Window, ctx)
+return function(Tab, Sorin, Window, ctx)
 
     local function addScript(displayName, source, opts)
         opts = opts or {}
@@ -16,32 +16,42 @@ return function(Tab, Luna, Window, ctx)
             Name = title,
             Description = opts.description, -- nur wenn gesetzt
             Callback = function()
-                local ok, err = pcall(function()
-                    if opts.raw then
-                        assert(type(source) == "string" and #source > 0, "empty raw source")
-                        loadstring(source)()
+                task.spawn(function()
+                    -- 🔔 Pre-execution notification
+                    Sorin:Notification({
+                        Title = displayName .. " is being executed",
+                        Icon = "info",
+                        ImageSource = "Material",
+                        Content = "Please wait..."
+                    })
+
+                    local ok, err = pcall(function()
+                        if opts.raw then
+                            assert(type(source) == "string" and #source > 0, "empty raw source")
+                            loadstring(source)()
+                        else
+                            local code = game:HttpGet(source)
+                            assert(type(code) == "string" and #code > 0, "failed to fetch code")
+                            loadstring(code)()
+                        end
+                    end)
+
+                    if ok then
+                        Sorin:Notification({
+                            Title = displayName,
+                            Icon = "check_circle",
+                            ImageSource = "Material",
+                            Content = "Executed successfully!"
+                        })
                     else
-                        local code = game:HttpGet(source)
-                        assert(type(code) == "string" and #code > 0, "failed to fetch code")
-                        loadstring(code)()
+                        Sorin:Notification({
+                            Title = displayName,
+                            Icon = "error",
+                            ImageSource = "Material",
+                            Content = "Error: " .. tostring(err)
+                        })
                     end
                 end)
-
-                if ok then
-                    Luna:Notification({
-                        Title = displayName,
-                        Icon = "check_circle",
-                        ImageSource = "Material",
-                        Content = "Executed successfully!"
-                    })
-                else
-                    Luna:Notification({
-                        Title = displayName,
-                        Icon = "error",
-                        ImageSource = "Material",
-                        Content = "Error: " .. tostring(err)
-                    })
-                end
             end
         })
     end
