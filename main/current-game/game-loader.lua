@@ -26,7 +26,7 @@ return function(Tab, Sorin, Window, ctx)
 
                 if ok and type(loaderFn) == "function" then
                     local okRun, err = pcall(function()
-                        loaderFn()(Tab, Luna, Window, ctx)
+                        loaderFn()(Tab, Sorin, Window, ctx)
                     end)
                     if not okRun then
                         Tab:CreateLabel({
