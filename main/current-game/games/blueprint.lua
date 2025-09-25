@@ -1,5 +1,5 @@
--- current-game/games/EmergencyHamburg.lua
-return function(Tab, Luna, Window, ctx)
+  -- current-game/games/EmergencyHamburg.lua
+return function(Tab, Sorin, Window, ctx)
 
     local function addScript(displayName, source, opts)
         opts = opts or {}
@@ -14,10 +14,17 @@ return function(Tab, Luna, Window, ctx)
 
         Tab:CreateButton({
             Name = title,
-            Description = opts.description,
+            Description = opts.description, -- nur wenn gesetzt
             Callback = function()
-                -- verschiebt die eigentliche Arbeit in einen eigenen Thread
                 task.spawn(function()
+                    -- 🔔 Pre-execution notification
+                    Sorin:Notification({
+                        Title = displayName .. " is being executed",
+                        Icon = "info",
+                        ImageSource = "Material",
+                        Content = "Please wait..."
+                    })
+
                     local ok, err = pcall(function()
                         if opts.raw then
                             if type(source) ~= "string" or #source == 0 then
@@ -34,14 +41,14 @@ return function(Tab, Luna, Window, ctx)
                     end)
 
                     if ok then
-                        Luna:Notification({
+                        Sorin:Notification({
                             Title = displayName,
                             Icon = "check_circle",
                             ImageSource = "Material",
                             Content = "Executed successfully!"
                         })
                     else
-                        Luna:Notification({
+                        Sorin:Notification({
                             Title = displayName,
                             Icon = "error",
                             ImageSource = "Material",
@@ -49,14 +56,16 @@ return function(Tab, Luna, Window, ctx)
                         })
                     end
                 end)
-                -- kein return, kein Error nach außen
             end
         })
     end
 
     ----------------------------------------------------------------
     local scripts = {
-        -- { name = "Inline Demo", raw = 'print("hi from inline")' }
+       -- { name = "RoScripts Hub",   url = "https://raw.githubusercontent.com/axleoislost/Accent/main/Vehicle-Legends", subtext = nil, recommended = false },
+
+
+        -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
     }
 
     -- Sort: recommended first, then alphabetically within group
