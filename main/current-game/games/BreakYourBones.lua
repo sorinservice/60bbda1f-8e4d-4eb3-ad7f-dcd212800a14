@@ -1,12 +1,9 @@
--- current-game/games/BreakYourBones.lua
+-- current-game/games/EmergencyHamburg.lua
 return function(Tab, Luna, Window, ctx)
 
-    -- helper: add a script entry
-    -- opts = { subtext = "optional small note", recommended = true, raw = false }
     local function addScript(displayName, source, opts)
         opts = opts or {}
 
-        -- Build the button label (name + optional subtext)
         local title = displayName
         if opts.subtext and #opts.subtext > 0 then
             title = title .. " — " .. opts.subtext
@@ -17,15 +14,15 @@ return function(Tab, Luna, Window, ctx)
 
         Tab:CreateButton({
             Name = title,
-            Description = opts.description or "Execute this script",
+            Description = opts.description, -- nur wenn gesetzt
             Callback = function()
                 local ok, err = pcall(function()
                     if opts.raw then
-                        -- 'source' IS raw Lua string code, not a URL
+                        assert(type(source) == "string" and #source > 0, "empty raw source")
                         loadstring(source)()
                     else
-                        -- 'source' IS a URL to raw Lua; fetch code then compile+run
                         local code = game:HttpGet(source)
+                        assert(type(code) == "string" and #code > 0, "failed to fetch code")
                         loadstring(code)()
                     end
                 end)
@@ -47,31 +44,34 @@ return function(Tab, Luna, Window, ctx)
                 end
             end
         })
-
-        -- If your UI can’t color buttons per-entry, skip separate labels.
-        -- If you still want a visible tag row, uncomment this:
-        -- if opts.recommended then
-        --     Tab:CreateLabel({ Text = "Status: Recommended by Sorin", Style = 2 })
-        -- end
     end
 
     ----------------------------------------------------------------
-    -- Define your scripts (URLs preferred). We’ll sort by name:
+
     local scripts = {
         { name = "Samuraa1 ByB",   url = "https://raw.githubusercontent.com/samuraa1/Samuraa1-Hub/refs/heads/main/ByB.lua", subtext = "Really good Script", recommended = true },
 
         -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
     }
+    
+    -- Sort: recommended first, then alphabetically within group
+    table.sort(scripts, function(a, b)
+        if a.recommended ~= b.recommended then
+            return a.recommended and not b.recommended
+        end
+        return a.name:lower() < b.name:lower()
+    end)
 
-    -- Sort alphabetically by display name
-    table.sort(scripts, function(a,b) return a.name:lower() < b.name:lower() end)
-
-    -- Render
     for _, s in ipairs(scripts) do
         addScript(
             s.name,
             s.url or s.raw,
-            { subtext = s.subtext, recommended = s.recommended, raw = s.isRaw }
+            {
+                subtext     = s.subtext,
+                description = s.description,
+                recommended = s.recommended,
+                raw         = (s.raw ~= nil)
+            }
         )
     end
 end
