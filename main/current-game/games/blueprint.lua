@@ -14,48 +14,51 @@ return function(Tab, Luna, Window, ctx)
 
         Tab:CreateButton({
             Name = title,
-            Description = opts.description, -- nur wenn gesetzt
+            Description = opts.description,
             Callback = function()
-                local ok, err = pcall(function()
-                    if opts.raw then
-                        assert(type(source) == "string" and #source > 0, "empty raw source")
-                        loadstring(source)()
+                -- verschiebt die eigentliche Arbeit in einen eigenen Thread
+                task.spawn(function()
+                    local ok, err = pcall(function()
+                        if opts.raw then
+                            if type(source) ~= "string" or #source == 0 then
+                                error("empty raw source")
+                            end
+                            loadstring(source)()
+                        else
+                            local code = game:HttpGet(source)
+                            if type(code) ~= "string" or #code == 0 then
+                                error("failed to fetch code")
+                            end
+                            loadstring(code)()
+                        end
+                    end)
+
+                    if ok then
+                        Luna:Notification({
+                            Title = displayName,
+                            Icon = "check_circle",
+                            ImageSource = "Material",
+                            Content = "Executed successfully!"
+                        })
                     else
-                        local code = game:HttpGet(source)
-                        assert(type(code) == "string" and #code > 0, "failed to fetch code")
-                        loadstring(code)()
+                        Luna:Notification({
+                            Title = displayName,
+                            Icon = "error",
+                            ImageSource = "Material",
+                            Content = "Error: " .. tostring(err)
+                        })
                     end
                 end)
-
-                if ok then
-                    Luna:Notification({
-                        Title = displayName,
-                        Icon = "check_circle",
-                        ImageSource = "Material",
-                        Content = "Executed successfully!"
-                    })
-                else
-                    Luna:Notification({
-                        Title = displayName,
-                        Icon = "error",
-                        ImageSource = "Material",
-                        Content = "Error: " .. tostring(err)
-                    })
-                end
+                -- kein return, kein Error nach außen
             end
         })
     end
 
     ----------------------------------------------------------------
-
     local scripts = {
-        --{ name = "RoScripts Hub",   url = "https://raw.githubusercontent.com/axleoislost/Accent/main/Vehicle-Legends", subtext = nil, recommended = false },
-
-
-        -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
+        -- { name = "Inline Demo", raw = 'print("hi from inline")' }
     }
 
-    
     -- Sort: recommended first, then alphabetically within group
     table.sort(scripts, function(a, b)
         if a.recommended ~= b.recommended then
