@@ -13,9 +13,14 @@ return function(Tab, Luna, Window, ctx)
             Name = "Show Supported Games",
             Description = "Open the list of supported games.",
             Callback = function()
+                -- cleanup: clear all previous tab contents before loading new UI
+                for _, inst in ipairs(Tab:GetChildren()) do
+                    pcall(function() inst:Destroy() end)
+                end
+
                 local ok, loaderFn = pcall(function()
                     return loadstring(game:HttpGet(
-                        "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/refs/heads/main/loader.lua"
+                        "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/main/shub_supported_games/loader.lua"
                     ))
                 end)
 
@@ -37,6 +42,20 @@ return function(Tab, Luna, Window, ctx)
                 end
             end
         })
+
+        --[[
+        ----------------------------------------------------------------
+        -- Optional: Suggest new game ideas (TextBox)
+        -- This adds a text field where users can type in suggestions.
+        -- Currently disabled. Uncomment if you want to use it.
+
+        Tab:CreateSection("Have a game idea?")
+        Tab:CreateLabel({
+            Text = "You can suggest new games in the Hub Settings tab.",
+            Style = 1
+        })
+
+        ]]--
 
         return
     end
