@@ -204,12 +204,5 @@ return function(Tab, Sorin, Window)
         Name="Infinite Jump", Default=false,
         Callback=function(on) infJump=on end
     })
-    Tab:CreateToggle({
-        Name="Fly", Default=false,
-        Callback=function(on) if on then startFly() else stopFly() end end
-    })
-    Tab:CreateSlider({
-        Name="Fly Speed", Min=10,Max=50,Default=10,Increment=1,
-        Callback=function(v) FLY.speed=v end
-    })
+
 end
