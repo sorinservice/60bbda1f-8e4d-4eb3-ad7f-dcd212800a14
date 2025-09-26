@@ -1,3 +1,4 @@
+-- current-game/game-loader.lua
 return function(Tab, Sorin, Window, ctx)
     -- Spiel nicht unterstützt
     if not ctx then
@@ -8,52 +9,48 @@ return function(Tab, Sorin, Window, ctx)
         })
 
         Tab:CreateButton({
-    Name = "Show Supported Games",
-    Description = "Open the list of supported games.",
-    Callback = function()
-        -- Tab leeren
-        for _, inst in ipairs(Tab:GetChildren()) do
-            pcall(function() inst:Destroy() end)
-        end
+            Name = "Show Supported Games",
+            Description = "Open the list of supported games.",
+            Callback = function()
+                for _, inst in ipairs(Tab:GetChildren()) do
+                    pcall(function() inst:Destroy() end)
+                end
 
-        -- Schritt 1: Code laden
-        local ok, chunk = pcall(function()
-            return loadstring(game:HttpGet(
-                "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/main/shub_supported_games/loader.lua"
-            ))
-        end)
+                local ok, chunk = pcall(function()
+                    return loadstring(game:HttpGet(
+                        "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/main/shub_supported_games/loader.lua"
+                    ))
+                end)
 
-        if not ok or type(chunk) ~= "function" then
-            Tab:CreateLabel({
-                Text = "Error loading supported games list.",
-                Style = 3
-            })
-            return
-        end
+                if ok and chunk then
+                    local okExec, export = pcall(chunk)
+                    if okExec and type(export) == "function" then
+                        local okRun, err = pcall(export, Tab, Sorin, Window, ctx)
+                        if not okRun then
+                            Tab:CreateLabel({
+                                Text = "Error running supported games list:\n" .. tostring(err),
+                                Style = 3
+                            })
+                        end
+                    else
+                        Tab:CreateLabel({
+                            Text = "Error: loader did not return a function.",
+                            Style = 3
+                        })
+                    end
+                else
+                    Tab:CreateLabel({
+                        Text = "Error loading supported games list.",
+                        Style = 3
+                    })
+                end
+            end
+        })
 
-        -- Schritt 2: Chunk ausführen → sollte eine Funktion zurückgeben
-        local okExec, export = pcall(chunk)
-        if not okExec or type(export) ~= "function" then
-            Tab:CreateLabel({
-                Text = "Error: loader did not return a valid function.",
-                Style = 3
-            })
-            return
-        end
-
-        -- Schritt 3: Export-Funktion mit Tab, Sorin, Window, ctx aufrufen
-        local okRun, err = pcall(export, Tab, Sorin, Window, ctx)
-        if not okRun then
-            Tab:CreateLabel({
-                Text = "Error running supported games list:\n" .. tostring(err),
-                Style = 3
-            })
-        end
+        return
     end
-})
 
-
-    -- Spiel unterstützt → Scripts laden
+    -- Spiel unterstützt
     if ctx.name then
         Tab:SetTitle(ctx.name)
     end
@@ -62,9 +59,9 @@ return function(Tab, Sorin, Window, ctx)
     local okBody, body = pcall(function()
         return game:HttpGet(ctx.module)
     end)
-    if not okBody then
+    if not okBody or not body then
         Tab:CreateLabel({
-            Text = "Game module load error:\n" .. tostring(body),
+            Text = "Game module load error.",
             Style = 3
         })
         return
@@ -79,9 +76,9 @@ return function(Tab, Sorin, Window, ctx)
         return
     end
 
-    local okRun, res = pcall(fn)
-    if okRun and type(res) == "function" then
-        local okCall, perr = pcall(res, Tab, Sorin, Window, ctx)
+    local okRun, modFn = pcall(fn)
+    if okRun and type(modFn) == "function" then
+        local okCall, perr = pcall(modFn, Tab, Sorin, Window, ctx)
         if not okCall then
             Tab:CreateLabel({
                 Text = "Game module init error:\n" .. tostring(perr),
@@ -90,7 +87,7 @@ return function(Tab, Sorin, Window, ctx)
         end
     else
         Tab:CreateLabel({
-            Text = "Game module invalid export.",
+            Text = "Game module did not return a valid function.",
             Style = 3
         })
     end
