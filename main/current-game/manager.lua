@@ -24,7 +24,7 @@ return {
              module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/BreakYourBones.lua",
          },
 
-                [10--9983668079237] = { -- Break your Bones PlaceID
+                [109983668079237] = { -- Break your Bones PlaceID
              name   = "Steal a Brainrot",
              module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/Steal%a%Brainrot.lua",
          },
