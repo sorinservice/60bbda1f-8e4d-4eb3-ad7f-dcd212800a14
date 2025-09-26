@@ -56,7 +56,7 @@ return function(Tab, Sorin, Window, ctx)
 
     ----------------------------------------------------------------
     local scripts = {
-        { name = "Lumin Hub",   url = "https://lumin-hub.lol/loader.lua", recommended = true },
+        { name = "Chilli Hub",   url = "https://raw.githubusercontent.com/UCT-hub/main/refs/heads/main/stealabrainrot", recommended = true },
 
         -- { name = "Inline Demo", raw = 'print("hi from inline")' }
     }
