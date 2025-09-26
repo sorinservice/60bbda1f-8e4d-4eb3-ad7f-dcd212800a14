@@ -80,6 +80,7 @@ return function(Tab, Sorin, Window, ctx)
     local mainScripts = {
         { name = "Infinite Yield",  url = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source", subtext = "FE Admin Script", recommended = true },
         { name = "Nameless Admin",  url = "https://raw.githubusercontent.com/FilteringEnabled/NamelessAdmin/main/Source"},
+        { name = "Audiologger",     url = "https://raw.githubusercontent.com/infyiff/backup/main/audiologger.lua"}
     }
     table.sort(mainScripts, function(a,b) return a.name:lower() < b.name:lower() end)
     for _, s in ipairs(mainScripts) do
@@ -91,6 +92,7 @@ return function(Tab, Sorin, Window, ctx)
     Tab:CreateSection("Utility Tools")
     local utilityScripts = {
         { name = "Dex Explorer", url = "https://raw.githubusercontent.com/infyiff/backup/main/dex.lua" },
+        { name = "Remotespy",    url = "https://raw.githubusercontent.com/infyiff/backup/main/SimpleSpyV3/main.lua"}
     }
     table.sort(utilityScripts, function(a,b) return a.name:lower() < b.name:lower() end)
     for _, s in ipairs(utilityScripts) do
