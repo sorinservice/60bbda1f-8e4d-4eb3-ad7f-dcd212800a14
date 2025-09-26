@@ -56,7 +56,7 @@ return function(Tab, Sorin, Window, ctx)
 
     ----------------------------------------------------------------
     local scripts = {
-        { name = "Vortex",   url = "https://vortexsoft.pages.dev/api/vortex.lua", recommended = true },
+        { name = "Lumin Hub",   url = "https://lumin-hub.lol/loader.lua", recommended = true },
 
         -- { name = "Inline Demo", raw = 'print("hi from inline")' }
     }
