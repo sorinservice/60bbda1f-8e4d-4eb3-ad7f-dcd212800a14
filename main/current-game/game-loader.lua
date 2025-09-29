@@ -51,9 +51,6 @@ return function(Tab, Sorin, Window, ctx)
     end
 
     -- Spiel unterstützt
-    if ctx.name then
-        Tab:SetTitle(ctx.name)
-    end
     Tab:CreateSection((ctx.name or "Current Game") .. " — Scripts")
 
     local okBody, body = pcall(function()
