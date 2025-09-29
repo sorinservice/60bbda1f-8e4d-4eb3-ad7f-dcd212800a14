@@ -1,4 +1,3 @@
-print("Major Problem")
 -- current-game/games/EmergencyHamburg.lua
 return function(Tab, Sorin, Window, ctx)
 
