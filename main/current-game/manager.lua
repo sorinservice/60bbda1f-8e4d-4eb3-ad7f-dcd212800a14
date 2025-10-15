@@ -1,5 +1,4 @@
 -- current-game/manager.lua
-print("Welcome Home")
 return {
     byPlace = {
         [7711635737] = {  -- Emergency Hamburg PlaceId
