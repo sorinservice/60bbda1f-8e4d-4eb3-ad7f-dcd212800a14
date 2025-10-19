@@ -19,7 +19,15 @@ local Window = Aurexis:CreateWindow({
     LoadingSubtitle = "Loading",
     ConfigSettings = { RootFolder = nil, ConfigFolder = "SorinHubConfig" },
     KeySystem = true,
-    KeySettings = { Title='SorinHub Key = SorinScriptHub', Subtitle="Key System", Note="Enter your key", SaveInRoot=false, SaveKey=true, Key={"SorinScriptHub", "FetterHurensohn", "SorinHub"}, SecondAction={Enabled=true,Type="Link",Parameter="https://discord.gg/XC5hpQQvMX"} }
+    KeySettings = { Title='SorinHub Key = SorinScriptHub', 
+    Subtitle="Key System",
+    Note="Enter your key", 
+    SaveInRoot=false, 
+    SaveKey=true, 
+    Key={"SorinScriptHub", "FetterHurensohn", "SorinHub"}, 
+    SecondAction= true,
+    Type="Link",
+    Parameter="https://discord.gg/XC5hpQQvMX"
 })
 
 -- try to hide while we fetch (if supported)
