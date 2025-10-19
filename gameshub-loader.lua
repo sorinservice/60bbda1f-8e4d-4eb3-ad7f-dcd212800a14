@@ -17,17 +17,19 @@ local Window = Aurexis:CreateWindow({
     LoadingEnabled = true,
     LoadingTitle = "Sorin Loader",
     LoadingSubtitle = "Loading",
-    ConfigSettings = { RootFolder = nil, ConfigFolder = "SorinHubConfig" },
+    ConfigSettings = { RootFolder = nil, 
+    ConfigFolder = "SorinHubConfig" },
     KeySystem = true,
+        
     KeySettings = { Title='SorinHub Key = SorinScriptHub', 
-    Subtitle="Key System",
+    Subtitle="Key System", 
     Note="Enter your key", 
     SaveInRoot=false, 
     SaveKey=true, 
     Key={"SorinScriptHub", "FetterHurensohn", "SorinHub"}, 
-    SecondAction= true,
+    SecondAction={Enabled=true,
     Type="Link",
-    Parameter="https://discord.gg/XC5hpQQvMX"
+    Parameter="https://discord.gg/XC5hpQQvMX"} }
 })
 
 -- try to hide while we fetch (if supported)
@@ -104,4 +106,3 @@ attachTab(currentGameTitle, TABS.CurrentGame, currentIcon, preCtx)
 -- Show window now that we’re done
 try(function() Window:SetMinimized(false) end)
 try(function() Window:SetVisible(true) end)
-
