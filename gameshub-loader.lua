@@ -1,8 +1,7 @@
---// Sorin Loader (Sorin-UI)
 local HttpService = game:GetService("HttpService")
 
--- 1) Load Sorin-UI
-local Sorin = loadstring(game:HttpGet("https://raw.githubusercontent.com/sorinservice/script-libary/main/luna-ui.lua"))()
+-- 1) Load AurexisInterface Libary
+local Aurexis = loadstring(game:HttpGet("https://scripts.sorinservice.online/sorin/aurixinterface.lua"))()
 
 -- Safe wrappers for optional API
 local function try(fn, ...)
@@ -11,7 +10,7 @@ local function try(fn, ...)
 end
 
 -- 2) Build window (we'll briefly hide it while we preload)
-local Window = Sorin:CreateWindow({
+local Window = Aurexis:CreateWindow({
     Name = "Sorin Script Hub",
     Subtitle = "ScriptLoader",
     LogoID = "77656423525793",
@@ -28,7 +27,7 @@ try(function() Window:SetVisible(false) end)
 try(function() Window:SetMinimized(true) end)
 
 -- Quick notify (will show once visible)
-Sorin:Notification({ Title="SorinHub", Icon="sparkle", ImageSource="Material", Content="UI initialized successfully." })
+Aurexis:Notification({ Title="SorinHub", Icon="sparkle", ImageSource="Material", Content="UI initialized successfully." })
 
 -- 3) Remote modules
 local TABS = {
@@ -38,6 +37,7 @@ local TABS = {
     CurrentGame      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/game-loader.lua",
     ManagerCfg       = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua",
     HubSettings      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubSettings.lua",
+    Utility          = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Utility.lua"
 }
 
 -- 4) Helpers (no cachebusters on raw)
@@ -58,7 +58,7 @@ local function attachTab(name, url, icon, ctx)
         Tab:CreateLabel({ Text = "Error loading '"..name.."': "..tostring(err), Style = 3 })
         return
     end
-    local ok, msg = pcall(mod, Tab, Sorin, Window, ctx) -- pass ctx through
+    local ok, msg = pcall(mod, Tab, Luna, Window, ctx) -- pass ctx through
     if not ok then
         Tab:CreateLabel({ Text = "Init error '"..name.."': "..tostring(msg), Style = 3 })
     end
@@ -96,3 +96,4 @@ attachTab(currentGameTitle, TABS.CurrentGame, currentIcon, preCtx)
 -- Show window now that we’re done
 try(function() Window:SetMinimized(false) end)
 try(function() Window:SetVisible(true) end)
+
