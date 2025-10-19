@@ -1,5 +1,5 @@
 -- FE-Scripts.lua
-return function(Tab, Sorin, Window, ctx)
+return function(Tab, Aurexis, Window, ctx)
 
     -- helper: add a script entry
     local function addScript(displayName, source, opts)
@@ -33,14 +33,14 @@ return function(Tab, Sorin, Window, ctx)
                 end)
 
                 if ok then
-                    Sorin:Notification({
+                    Aurexis:Notification({
                         Title = displayName,
                         Icon = "check_circle",
                         ImageSource = "Material",
                         Content = "Executed successfully!"
                     })
                 else
-                    Sorin:Notification({
+                    Aurexis:Notification({
                         Title = displayName,
                         Icon = "error",
                         ImageSource = "Material",
