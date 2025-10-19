@@ -1,11 +1,11 @@
 -- Developer.lua
-return function(Tab, Sorin, Window)
+return function(Tab, Aurexis, Window)
     local HttpService = game:GetService("HttpService")
     local Players = game:GetService("Players")
 
     local function copyAndNotify(label, value)
         setclipboard(tostring(value))
-        Sorin:Notification({
+        Aurexis:Notification({
             Title = "Copied",
             Icon = "check",
             ImageSource = "Material",
