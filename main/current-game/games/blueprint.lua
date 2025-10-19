@@ -1,5 +1,5 @@
   -- current-game/games/EmergencyHamburg.lua
-return function(Tab, Sorin, Window, ctx)
+return function(Tab, Aurexis, Window, ctx)
 
     local function addScript(displayName, source, opts)
         opts = opts or {}
@@ -18,7 +18,7 @@ return function(Tab, Sorin, Window, ctx)
             Callback = function()
                 task.spawn(function()
                     -- 🔔 Pre-execution notification
-                    Sorin:Notification({
+                    Aurexis:Notification({
                         Title = displayName .. " is being executed",
                         Icon = "info",
                         ImageSource = "Material",
@@ -41,14 +41,14 @@ return function(Tab, Sorin, Window, ctx)
                     end)
 
                     if ok then
-                        Sorin:Notification({
+                        Aurexis:Notification({
                             Title = displayName,
                             Icon = "check_circle",
                             ImageSource = "Material",
                             Content = "Executed successfully!"
                         })
                     else
-                        Sorin:Notification({
+                        Aurexis:Notification({
                             Title = displayName,
                             Icon = "error",
                             ImageSource = "Material",
