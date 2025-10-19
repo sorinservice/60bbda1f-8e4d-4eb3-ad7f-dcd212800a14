@@ -13,7 +13,7 @@ end
 local Window = Aurexis:CreateWindow({
     Name = "Sorin Script Hub",
     Subtitle = "ScriptLoader",
-    LogoID = "77656423525793",
+    LogoID = "81883809791714", -- "77656423525793"
     LoadingEnabled = true,
     LoadingTitle = "Sorin Loader",
     LoadingSubtitle = "Loading",
