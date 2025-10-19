@@ -1,5 +1,5 @@
 -- current-game/game-loader.lua
-return function(Tab, Sorin, Window, ctx)
+return function(Tab, Aurexis, Window, ctx)
 	-- Spiel nicht unterstützt
 	if not ctx then
 		Tab:CreateSection("Current Game — Unsupported")
@@ -61,7 +61,7 @@ return function(Tab, Sorin, Window, ctx)
 				end
 
 				-- finally run it
-				local okRun, runErr = pcall(export, Tab, Sorin, Window, ctx)
+				local okRun, runErr = pcall(export, Tab, Aurexis, Window, ctx)
 				if not okRun then
 					Tab:CreateLabel({
 						Text = "Error running supported games list:\n" .. tostring(runErr),
@@ -100,7 +100,7 @@ return function(Tab, Sorin, Window, ctx)
 
 	local okRun, modFn = pcall(fn)
 	if okRun and type(modFn) == "function" then
-		local okCall, perr = pcall(modFn, Tab, Sorin, Window, ctx)
+		local okCall, perr = pcall(modFn, Tab, Aurexis, Window, ctx)
 		if not okCall then
 			Tab:CreateLabel({
 				Text = "Game module init error:\n" .. tostring(perr),
