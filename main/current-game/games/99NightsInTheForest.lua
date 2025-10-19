@@ -1,5 +1,5 @@
 -- current-game/games/EmergencyHamburg.lua
-return function(Tab, Luna, Window, ctx)
+return function(Tab, Aurexis, Window, ctx)
 
     local function addScript(displayName, source, opts)
         opts = opts or {}
@@ -28,14 +28,14 @@ return function(Tab, Luna, Window, ctx)
                 end)
 
                 if ok then
-                    Luna:Notification({
+                    Aurexis:Notification({
                         Title = displayName,
                         Icon = "check_circle",
                         ImageSource = "Material",
                         Content = "Executed successfully!"
                     })
                 else
-                    Luna:Notification({
+                    Aurexis:Notification({
                         Title = displayName,
                         Icon = "error",
                         ImageSource = "Material",
