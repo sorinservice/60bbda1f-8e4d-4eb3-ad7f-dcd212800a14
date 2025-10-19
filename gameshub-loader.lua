@@ -68,7 +68,7 @@ local function attachTab(name, url, icon, ctx)
         Tab:CreateLabel({ Text = "Error loading '"..name.."': "..tostring(err), Style = 3 })
         return
     end
-    local ok, msg = pcall(mod, Tab, Luna, Window, ctx) -- pass ctx through
+    local ok, msg = pcall(mod, Tab, Aurexis, Window, ctx) -- pass ctx through
     if not ok then
         Tab:CreateLabel({ Text = "Init error '"..name.."': "..tostring(msg), Style = 3 })
     end
