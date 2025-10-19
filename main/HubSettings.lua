@@ -1,6 +1,6 @@
 -- HubSettings.lua
 -- SorinHub: Performance, Hub Info, Credits (safe / minimal / stable)
-return function(Tab, Sorin, Window)
+return function(Tab, Aurexis, Window)
     local RunService = game:GetService("RunService")
     local Stats = game:GetService("Stats")
     local Players = game:GetService("Players")
@@ -23,7 +23,7 @@ Tab:CreateButton({
             pcall(function() Window:Destroy() end)
         else
             -- fallback: only remove Sorin UI ScreenGui, not all CoreGui
-            local gui = game.CoreGui:FindFirstChild("SorinUI") -- Name anpassen!
+            local gui = game.CoreGui:FindFirstChild("AurexisUI") -- Name anpassen!
             if gui then
                 gui:Destroy()
             end
