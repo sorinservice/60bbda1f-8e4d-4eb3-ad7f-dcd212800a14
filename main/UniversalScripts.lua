@@ -1,49 +1,67 @@
 -- UniversalScripts.lua
 return function(Tab, Aurexis, Window, ctx)
 
-    -- helper: add a script entry
     local function addScript(displayName, source, opts)
         opts = opts or {}
+
         local title = displayName
-        if opts.subtext and #opts.subtext > 0 then
-            title = title .. " — " .. opts.subtext
+        if opts.subtext and opts.subtext ~= "" then
+            title = title .. " - " .. opts.subtext
         end
 
-        local description = nil
-        if opts.description and #opts.description > 0 then
-            description = opts.description
-        elseif opts.recommended then
-            description = "✓ Recommended by Sorin"
+        local description = opts.description
+        if (description == nil or description == "") and opts.recommended then
+            description = "Recommended by Sorin"
         end
+
+        local isRawSource = opts.isRaw or opts.raw == true
 
         Tab:CreateButton({
             Name = title,
             Description = description,
             Callback = function()
-                local ok, err = pcall(function()
-                    if opts.raw then
-                        loadstring(source)()
+                task.spawn(function()
+                    Aurexis:Notification({
+                        Title = displayName .. " is being executed",
+                        Icon = "info",
+                        ImageSource = "Material",
+                        Content = "Please wait..."
+                    })
+
+                    local ok, err = pcall(function()
+                        if isRawSource then
+                            if type(source) ~= "string" or source == "" then
+                                error("missing inline source")
+                            end
+                            loadstring(source)()
+                        else
+                            if type(source) ~= "string" or source == "" then
+                                error("missing script URL")
+                            end
+                            local code = game:HttpGet(source)
+                            if type(code) ~= "string" or code == "" then
+                                error("received empty script response")
+                            end
+                            loadstring(code)()
+                        end
+                    end)
+
+                    if ok then
+                        Aurexis:Notification({
+                            Title = displayName,
+                            Icon = "check_circle",
+                            ImageSource = "Material",
+                            Content = "Executed successfully!"
+                        })
                     else
-                        local code = game:HttpGet(source)
-                        loadstring(code)()
+                        Aurexis:Notification({
+                            Title = displayName,
+                            Icon = "error",
+                            ImageSource = "Material",
+                            Content = "Error: " .. tostring(err)
+                        })
                     end
                 end)
-
-                if ok then
-                    Aurexis:Notification({
-                        Title = displayName,
-                        Icon = "check_circle",
-                        ImageSource = "Material",
-                        Content = "Executed successfully!"
-                    })
-                else
-                    Aurexis:Notification({
-                        Title = displayName,
-                        Icon = "error",
-                        ImageSource = "Material",
-                        Content = "Error: " .. tostring(err)
-                    })
-                end
             end
         })
     end
@@ -52,16 +70,22 @@ return function(Tab, Aurexis, Window, ctx)
     -- Main Scripts
     Tab:CreateSection("Main Scripts")
     local mainScripts = {
-        { name = "Wisl'i Universal Project", url = "https://raw.githubusercontent.com/wisl884/wisl-i-Universal-Project1/main/Wisl'i%20Universal%20Project.lua" },
         { name = "Express Hub",             url = "https://api.luarmor.net/files/v3/loaders/d8824b23a4d9f2e0d62b4e69397d206b.lua", subtext = "With Key System" },
-        { name = "Foggy Hub",               url = "https://raw.githubusercontent.com/FOGOTY/foggy-loader/refs/heads/main/loader",  subtext = "With Key System" },
+        { name = "Foggy Hub",               url = "https://raw.githubusercontent.com/FOGOTY/foggy-loader/refs/heads/main/loader", subtext = "With Key System" },
         { name = "Sirius",                  url = "https://sirius.menu/script" },
+        { name = "Wisl'i Universal Project", url = "https://raw.githubusercontent.com/wisl884/wisl-i-Universal-Project1/main/Wisl'i%20Universal%20Project.lua" },
     }
-    table.sort(mainScripts, function(a,b) return a.name:lower() < b.name:lower() end)
-    for _, s in ipairs(mainScripts) do
-        addScript(s.name, s.url or s.raw, s)
+    table.sort(mainScripts, function(a, b)
+        return a.name:lower() < b.name:lower()
+    end)
+    for _, script in ipairs(mainScripts) do
+        addScript(script.name, script.url or script.raw, {
+            subtext     = script.subtext,
+            description = script.description,
+            recommended = script.recommended,
+            isRaw       = script.raw ~= nil
+        })
     end
-
 
     ----------------------------------------------------------------
     -- Aimbots + Silent Aim
@@ -69,33 +93,54 @@ return function(Tab, Aurexis, Window, ctx)
     local aimScripts = {
         { name = "Universal Aimbot", url = "https://pastebin.com/raw/V16qnfcj" },
     }
-    table.sort(aimScripts, function(a,b) return a.name:lower() < b.name:lower() end)
-    for _, s in ipairs(aimScripts) do
-        addScript(s.name, s.url or s.raw, s)
+    table.sort(aimScripts, function(a, b)
+        return a.name:lower() < b.name:lower()
+    end)
+    for _, script in ipairs(aimScripts) do
+        addScript(script.name, script.url or script.raw, {
+            subtext     = script.subtext,
+            description = script.description,
+            recommended = script.recommended,
+            isRaw       = script.raw ~= nil
+        })
     end
 
     ----------------------------------------------------------------
     -- Admin Scripts
     Tab:CreateSection("Admin Scripts")
-    local mainScripts = {
+    local adminScripts = {
+        { name = "Audiologger",     url = "https://raw.githubusercontent.com/infyiff/backup/main/audiologger.lua" },
         { name = "Infinite Yield",  url = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source", subtext = "FE Admin Script", recommended = true },
-        { name = "Nameless Admin",  url = "https://raw.githubusercontent.com/FilteringEnabled/NamelessAdmin/main/Source"},
-        { name = "Audiologger",     url = "https://raw.githubusercontent.com/infyiff/backup/main/audiologger.lua"}
+        { name = "Nameless Admin",  url = "https://raw.githubusercontent.com/FilteringEnabled/NamelessAdmin/main/Source" },
     }
-    table.sort(mainScripts, function(a,b) return a.name:lower() < b.name:lower() end)
-    for _, s in ipairs(mainScripts) do
-        addScript(s.name, s.url or s.raw, s)
+    table.sort(adminScripts, function(a, b)
+        return a.name:lower() < b.name:lower()
+    end)
+    for _, script in ipairs(adminScripts) do
+        addScript(script.name, script.url or script.raw, {
+            subtext     = script.subtext,
+            description = script.description,
+            recommended = script.recommended,
+            isRaw       = script.raw ~= nil
+        })
     end
-    
+
     ----------------------------------------------------------------
     -- Utility Tools
     Tab:CreateSection("Utility Tools")
     local utilityScripts = {
         { name = "Dex Explorer", url = "https://raw.githubusercontent.com/infyiff/backup/main/dex.lua" },
-        { name = "Remotespy",    url = "https://raw.githubusercontent.com/infyiff/backup/main/SimpleSpyV3/main.lua"}
+        { name = "Remotespy",    url = "https://raw.githubusercontent.com/infyiff/backup/main/SimpleSpyV3/main.lua" },
     }
-    table.sort(utilityScripts, function(a,b) return a.name:lower() < b.name:lower() end)
-    for _, s in ipairs(utilityScripts) do
-        addScript(s.name, s.url or s.raw, s)
+    table.sort(utilityScripts, function(a, b)
+        return a.name:lower() < b.name:lower()
+    end)
+    for _, script in ipairs(utilityScripts) do
+        addScript(script.name, script.url or script.raw, {
+            subtext     = script.subtext,
+            description = script.description,
+            recommended = script.recommended,
+            isRaw       = script.raw ~= nil
+        })
     end
 end
