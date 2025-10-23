@@ -1,4 +1,4 @@
-  -- current-game/games/EmergencyHamburg.lua
+-- current-game/games/EmergencyHamburg.lua
 return function(Tab, Aurexis, Window, ctx)
 
     local function addScript(displayName, source, opts)
@@ -16,56 +16,48 @@ return function(Tab, Aurexis, Window, ctx)
             Name = title,
             Description = opts.description, -- nur wenn gesetzt
             Callback = function()
-                task.spawn(function()
-                    -- 🔔 Pre-execution notification
-                    Aurexis:Notification({
-                        Title = displayName .. " is being executed",
-                        Icon = "info",
-                        ImageSource = "Material",
-                        Content = "Please wait..."
-                    })
+                -- 🔔 Pre-execution notification
+                Aurexis:Notification({
+                    Title = displayName .. " is being executed",
+                    Icon = "info",
+                    ImageSource = "Material",
+                    Content = "Please wait..."
+                })
 
-                    local ok, err = pcall(function()
-                        if opts.raw then
-                            if type(source) ~= "string" or #source == 0 then
-                                error("empty raw source")
-                            end
-                            loadstring(source)()
-                        else
-                            local code = game:HttpGet(source)
-                            if type(code) ~= "string" or #code == 0 then
-                                error("failed to fetch code")
-                            end
-                            loadstring(code)()
-                        end
-                    end)
-
-                    if ok then
-                        Aurexis:Notification({
-                            Title = displayName,
-                            Icon = "check_circle",
-                            ImageSource = "Material",
-                            Content = "Executed successfully!"
-                        })
+                local ok, err = pcall(function()
+                    if opts.raw then
+                        assert(type(source) == "string" and #source > 0, "empty raw source")
+                        loadstring(source)()
                     else
-                        Aurexis:Notification({
-                            Title = displayName,
-                            Icon = "error",
-                            ImageSource = "Material",
-                            Content = "Error: " .. tostring(err)
-                        })
+                        local code = game:HttpGet(source)
+                        assert(type(code) == "string" and #code > 0, "failed to fetch code")
+                        loadstring(code)()
                     end
                 end)
+
+                if ok then
+                    Aurexis:Notification({
+                        Title = displayName,
+                        Icon = "check_circle",
+                        ImageSource = "Material",
+                        Content = "Executed successfully!"
+                    })
+                else
+                    Aurexis:Notification({
+                        Title = displayName,
+                        Icon = "error",
+                        ImageSource = "Material",
+                        Content = "Error: " .. tostring(err)
+                    })
+                end
             end
         })
     end
 
     ----------------------------------------------------------------
     local scripts = {
-       -- { name = "RoScripts Hub",   url = "https://raw.githubusercontent.com/axleoislost/Accent/main/Vehicle-Legends", subtext = nil, recommended = false },
-
-
-        -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
+        { name = "Vortex",   url = "https://vortexsoft.pages.dev/api/vortex.lua", recommended = true },
+        -- { name = "Inline Demo", raw = 'print("hi from inline")' }
     }
 
     -- Sort: recommended first, then alphabetically within group
