@@ -6,17 +6,17 @@ return function(Tab, Aurexis, Window, ctx)
 
         local title = displayName
         if opts.subtext and #opts.subtext > 0 then
-            title = title .. " — " .. opts.subtext
+            title = title .. " - " .. opts.subtext
         end
         if opts.recommended and not opts.description then
-            opts.description = "✓ Recommended by Sorin"
+            opts.description = "Recommended by Sorin"
         end
 
         Tab:CreateButton({
             Name = title,
-            Description = opts.description, -- nur wenn gesetzt
+            Description = opts.description,
             Callback = function()
-                -- 🔔 Pre-execution notification
+                -- Pre-execution notification
                 Aurexis:Notification({
                     Title = displayName .. " is being executed",
                     Icon = "info",
@@ -55,14 +55,13 @@ return function(Tab, Aurexis, Window, ctx)
     end
 
     ----------------------------------------------------------------
+    Tab:CreateSection("Main Scripts")
     local scripts = {
         { name = "Vortex",   url = "https://vortexsoft.pages.dev/api/vortex.lua", recommended = true },
         { name = "Nova",     url = "https://novaw.xyz/MainScript.lua" },
         { name = "BeanzHub", url = "https://raw.githubusercontent.com/pid4k/scripts/main/BeanzHub.lua" },
-        -- { name = "Inline Demo", raw = 'print("hi from inline")' }
     }
 
-    -- Sort: recommended first, then alphabetically within group
     table.sort(scripts, function(a, b)
         if a.recommended ~= b.recommended then
             return a.recommended and not b.recommended
@@ -71,6 +70,33 @@ return function(Tab, Aurexis, Window, ctx)
     end)
 
     for _, s in ipairs(scripts) do
+        addScript(
+            s.name,
+            s.url or s.raw,
+            {
+                subtext     = s.subtext,
+                description = s.description,
+                recommended = s.recommended,
+                raw         = (s.raw ~= nil)
+            }
+        )
+    end
+
+    ----------------------------------------------------------------
+    Tab:CreateSection("AutoRob Scripts")
+    local autorobScripts = {
+        {
+            name = "Vortex Vending Rob",
+            url = "https://raw.githubusercontent.com/ItemTo/Vending/refs/heads/main/Rob",
+            description = "Auto-robs the vending machines for easy cash.",
+        },
+    }
+
+    table.sort(autorobScripts, function(a, b)
+        return a.name:lower() < b.name:lower()
+    end)
+
+    for _, s in ipairs(autorobScripts) do
         addScript(
             s.name,
             s.url or s.raw,
