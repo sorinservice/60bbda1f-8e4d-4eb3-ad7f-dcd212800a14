@@ -9,32 +9,95 @@ return function(Tab, Aurexis, Window)
     ----------------------------------------------------------------
     -- CONFIG
     local HUB_VERSION     = "v0.2"
-    local HUB_LASTUPDATE  = "23.10.2025"
-    local HUB_GAMES       = "5"
-    local HUB_SCRIPTS     = "8+"
+    local HUB_LASTUPDATE  = "23.09.2025"
+    local HUB_GAMES       = "3"
+    local HUB_SCRIPTS     = "5+"
     ----------------------------------------------------------------
 
     -- Destroy Hub Button
-Tab:CreateButton({
-    Name = "Destroy Hub",
-    Callback = function()
-        -- try built-in destroy
-        if Window and type(Window.Destroy) == "function" then
-            pcall(function() Window:Destroy() end)
-        else
-            -- fallback: only remove Sorin UI ScreenGui, not all CoreGui
-            local gui = game.CoreGui:FindFirstChild("AurexisUI") -- Name anpassen!
-            if gui then
-                gui:Destroy()
+    Tab:CreateButton({
+        Name = "Destroy Hub",
+        Callback = function()
+            local destroyed = false
+
+            if Aurexis and typeof(Aurexis.Destroy) == "function" then
+                destroyed = select(1, pcall(function()
+                    Aurexis:Destroy()
+                end)) == true
+            end
+
+            if not destroyed and Window and typeof(Window.Destroy) == "function" then
+                destroyed = select(1, pcall(function()
+                    Window:Destroy()
+                end)) == true
+            end
+
+            if not destroyed then
+                local coreGui = game:GetService("CoreGui")
+                for _, child in ipairs(coreGui:GetChildren()) do
+                    local name = string.lower(child.Name)
+                    if string.find(name, "aurexis") or string.find(name, "sorinhub") then
+                        child:Destroy()
+                        destroyed = true
+                    end
+                end
+            end
+
+            if not destroyed then
+                if Aurexis and typeof(Aurexis.Notification) == "function" then
+                    Aurexis:Notification({
+                        Title = "Destroy Hub",
+                        Content = "Konnte das Interface nicht automatisch schliessen.",
+                        Icon = "error"
+                    })
+                end
             end
         end
-    end
-})
+    })
 
 
     ----------------------------------------------------------------
     -- FPS CAP Slider (silent set, no spam)
     local defaultCap = 60
+    local fpsCapFunctions = {
+        "setfpscap",
+        "set_fps_cap",
+        "setfps",
+        "set_fps",
+        "fpscap",
+        "set_max_fps",
+        "setfpslimit",
+        "set_fps_limit",
+    }
+
+    local function resolveFpsSetter()
+        local envCandidates = {}
+        local ok, env = pcall(function() return getgenv and getgenv() end)
+        if ok and type(env) == "table" then
+            table.insert(envCandidates, env)
+        end
+        table.insert(envCandidates, _G)
+        table.insert(envCandidates, shared or {})
+        if typeof(syn) == "table" then
+            table.insert(envCandidates, syn)
+        end
+        for _, name in ipairs(fpsCapFunctions) do
+            for __, scope in ipairs(envCandidates) do
+                local candidate = scope[name]
+                if typeof(candidate) == "function" then
+                    return candidate, name
+                end
+            end
+            if typeof(_ENV) == "table" and typeof(_ENV[name]) == "function" then
+                return _ENV[name], name
+            end
+        end
+        return nil
+    end
+
+    local fpsSetter = resolveFpsSetter()
+    local warnedNoFpsSetter = false
+
     Tab:CreateSlider({
         Name = "FPS Cap",
         Min = 30,
@@ -42,8 +105,23 @@ Tab:CreateButton({
         Default = defaultCap,
         Increment = 5,
         Callback = function(val)
-            if typeof(setfpscap) == "function" then
-                pcall(function() setfpscap(val) end)
+            fpsSetter = fpsSetter or resolveFpsSetter()
+            if fpsSetter then
+                local ok, err = pcall(fpsSetter, math.floor(val + 0.5))
+                if not ok and Aurexis and typeof(Aurexis.Notification) == "function" then
+                    Aurexis:Notification({
+                        Title = "FPS Cap",
+                        Content = "Fehler beim Setzen des FPS-Limits: " .. tostring(err),
+                        Icon = "error"
+                    })
+                end
+            elseif not warnedNoFpsSetter and Aurexis and typeof(Aurexis.Notification) == "function" then
+                Aurexis:Notification({
+                    Title = "FPS Cap",
+                    Content = "Dein Executor unterstuetzt keine FPS-Limit Funktion.",
+                    Icon = "info"
+                })
+                warnedNoFpsSetter = true
             end
         end
     })
@@ -56,21 +134,24 @@ Tab:CreateButton({
         Style = 2
     })
 
-    -- lightweight FPS measurement using accumulated delta time
+    -- lightweight FPS measurement using accumulated delta time (Heartbeat for compatibility)
     local fpsFrameCount = 0
     local fpsTimeAccum = 0
-    local renderConn
-    renderConn = RunService.RenderStepped:Connect(function(dt)
-        fpsFrameCount += 1
-        fpsTimeAccum += (typeof(dt) == "number" and dt or 0)
-        if perfParagraph == nil then
-            renderConn:Disconnect()
+    local heartbeatConn
+    heartbeatConn = RunService.Heartbeat:Connect(function(dt)
+        if typeof(dt) == "number" and dt > 0 then
+            fpsFrameCount += 1
+            fpsTimeAccum += dt
+        end
+        if perfParagraph == nil and heartbeatConn then
+            heartbeatConn:Disconnect()
+            heartbeatConn = nil
         end
     end)
 
     -- update loop every second
     task.spawn(function()
-        local network = Stats.Network and Stats.Network.ServerStatsItem
+        local networkStatsContainer = Stats and Stats.Network and Stats.Network.ServerStatsItem
 
         local function getFps()
             local fps = 0
@@ -82,26 +163,44 @@ Tab:CreateButton({
             return fps
         end
 
-        local function getPing()
-            if not network then return "N/A" end
-            local item = network["Data Ping"]
-            if item and typeof(item.GetValue) == "function" then
-                local ok, value = pcall(item.GetValue, item)
-                if ok and typeof(value) == "number" then
-                    return string.format("%d ms", math.floor(value + 0.5))
+        local function getServerStatValue(statName)
+            if not networkStatsContainer then
+                return nil
+            end
+            local ok, item = pcall(function()
+                return networkStatsContainer[statName]
+            end)
+            if not ok or not item then
+                return nil
+            end
+            if typeof(item.GetValue) == "function" then
+                local okValue, value = pcall(item.GetValue, item)
+                if okValue and typeof(value) == "number" then
+                    return value
                 end
+            end
+            if typeof(item.GetValueString) == "function" then
+                local okString, str = pcall(item.GetValueString, item)
+                if okString and typeof(str) == "string" then
+                    local number = tonumber((str:gsub("%D", "")))
+                    return number or str
+                end
+            end
+            return nil
+        end
+
+        local function getPing()
+            local value = getServerStatValue("Data Ping")
+            if typeof(value) == "number" then
+                return string.format("%d ms", math.floor(value + 0.5))
             end
             return "N/A"
         end
 
         local function getNetworkStat(field, unit)
-            if not network then return "N/A" end
-            local item = network[field]
-            if item and typeof(item.GetValue) == "function" then
-                local ok, value = pcall(item.GetValue, item)
-                if ok and typeof(value) == "number" then
-                    return string.format("%d %s", math.floor(value + 0.5), unit)
-                end
+            local value = getServerStatValue(field)
+            if typeof(value) == "number" then
+                return string.format("%d %s", math.floor(value + 0.5), unit)
             end
             return "N/A"
         end
@@ -169,16 +268,16 @@ Tab:CreateButton({
     Tab:CreateSection("Credits")
     Tab:CreateParagraph({
         Title = "Main Credits",
-        Text = "Nebula Softworks — Luna UI (Design & Code)",
+        Text = "Nebula Softworks ??? Luna UI (Design & Code)",
         Style = 2
     })
     Tab:CreateParagraph({
         Title = "SorinHub Credits",
-        Text = "SorinSoftware Services — Luna UI (Code modifications & SorinHub Scripts)",
+        Text = "SorinSoftware Services ??? Luna UI (Code modifications & SorinHub Scripts)",
         Style = 2
     })
     Tab:CreateLabel({
-        Text = "SorinHub Scriptloader — by SorinSoftware Services",
+        Text = "SorinHub Scriptloader ??? by SorinSoftware Services",
         Style = 2
     })
 end
