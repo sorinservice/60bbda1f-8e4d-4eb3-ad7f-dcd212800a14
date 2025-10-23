@@ -57,7 +57,7 @@ return function(Tab, Aurexis, Window, ctx)
     ----------------------------------------------------------------
     local scripts = {
         { name = "Neuron",   url = "https://raw.githubusercontent.com/Yumiara/Python/refs/heads/main/SCP3008.py" },
-        { name = "Unknown",  url = "https://raw.githubusercontent.com/RunDTM/ZeeroxHub/main/Loader.lua"
+        { name = "Unknown",  url = "https://raw.githubusercontent.com/RunDTM/ZeeroxHub/main/Loader.lua" },
         -- { name = "Inline Demo", raw = 'print("hi from inline")' }
     }
 
