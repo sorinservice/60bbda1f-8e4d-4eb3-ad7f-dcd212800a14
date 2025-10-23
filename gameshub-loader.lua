@@ -11,12 +11,9 @@ end
 
 -- 2) Build window (we'll briefly hide it while we preload)
 local Window = Aurexis:CreateWindow({
-    Name = "Sorin Script Hub",
-    Subtitle = "ScriptLoader",
-    LogoID = "81883809791714", -- "77656423525793"
+    Name = "Aurexis ScriptHub",
+    Subtitle = "SorinSoftwares",
     LoadingEnabled = true,
-    LoadingTitle = "Sorin Loader",
-    LoadingSubtitle = "Loading",
     ConfigSettings = { RootFolder = nil, 
     ConfigFolder = "SorinHubConfig" },
     KeySystem = true,
