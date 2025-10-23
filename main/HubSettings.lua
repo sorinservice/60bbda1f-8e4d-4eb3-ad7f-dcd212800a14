@@ -9,9 +9,9 @@ return function(Tab, Aurexis, Window)
     ----------------------------------------------------------------
     -- CONFIG
     local HUB_VERSION     = "v0.2"
-    local HUB_LASTUPDATE  = "23.09.2025"
-    local HUB_GAMES       = "3"
-    local HUB_SCRIPTS     = "5+"
+    local HUB_LASTUPDATE  = "23.10.2025"
+    local HUB_GAMES       = "5"
+    local HUB_SCRIPTS     = "8+"
     ----------------------------------------------------------------
 
     -- Destroy Hub Button
@@ -56,68 +56,92 @@ Tab:CreateButton({
         Style = 2
     })
 
-    -- lightweight FPS measurement using RenderStepped counter
-    local frames = 0
-    local lastTick = tick()
-    RunService.RenderStepped:Connect(function() frames = frames + 1 end)
-
-    -- Alternative Heartbeat measurement for accuracy
-    local heartbeatFrames = 0
-    RunService.Heartbeat:Connect(function() heartbeatFrames = heartbeatFrames + 1 end)
+    -- lightweight FPS measurement using accumulated delta time
+    local fpsFrameCount = 0
+    local fpsTimeAccum = 0
+    local renderConn
+    renderConn = RunService.RenderStepped:Connect(function(dt)
+        fpsFrameCount += 1
+        fpsTimeAccum += (typeof(dt) == "number" and dt or 0)
+        if perfParagraph == nil then
+            renderConn:Disconnect()
+        end
+    end)
 
     -- update loop every second
     task.spawn(function()
+        local network = Stats.Network and Stats.Network.ServerStatsItem
+
+        local function getFps()
+            local fps = 0
+            if fpsTimeAccum > 0 then
+                fps = math.floor((fpsFrameCount / fpsTimeAccum) + 0.5)
+            end
+            fpsFrameCount = 0
+            fpsTimeAccum = 0
+            return fps
+        end
+
+        local function getPing()
+            if not network then return "N/A" end
+            local item = network["Data Ping"]
+            if item and typeof(item.GetValue) == "function" then
+                local ok, value = pcall(item.GetValue, item)
+                if ok and typeof(value) == "number" then
+                    return string.format("%d ms", math.floor(value + 0.5))
+                end
+            end
+            return "N/A"
+        end
+
+        local function getNetworkStat(field, unit)
+            if not network then return "N/A" end
+            local item = network[field]
+            if item and typeof(item.GetValue) == "function" then
+                local ok, value = pcall(item.GetValue, item)
+                if ok and typeof(value) == "number" then
+                    return string.format("%d %s", math.floor(value + 0.5), unit)
+                end
+            end
+            return "N/A"
+        end
+
+        local function getMemory()
+            -- try Stats API first, fall back to collectgarbage
+            if Stats and typeof(Stats.GetMemoryUsageMbForTag) == "function" then
+                local ok, total = pcall(function()
+                    return Stats:GetMemoryUsageMbForTag(Enum.DeveloperMemoryTag.Total)
+                end)
+                if ok and typeof(total) == "number" then
+                    return string.format("%.1f MB", total)
+                end
+            end
+
+            local ok, kb = pcall(function()
+                return collectgarbage("count")
+            end)
+            if ok and kb then
+                return string.format("%.1f MB", kb / 1024)
+            end
+
+            return "N/A"
+        end
+
         while true do
             task.wait(1)
 
-            -- compute FPS from RenderStepped
-            local now = tick()
-            local elapsed = now - lastTick
-            local fps = 0
-            if elapsed > 0 then
-                fps = math.floor((frames / elapsed) + 0.5)
+            if perfParagraph == nil then
+                break
             end
-            frames = 0
-            lastTick = now
 
-            -- compute FPS from Heartbeat as backup
-            local heartbeatElapsed = now - lastTick
-            local heartbeatFps = 0
-            if heartbeatElapsed > 0 then
-                heartbeatFps = math.floor((heartbeatFrames / heartbeatElapsed) + 0.5)
-            end
-            heartbeatFrames = 0
+            local fps = getFps()
+            local ping = getPing()
+            local mem = getMemory()
+            local sent = getNetworkStat("Data Send Kbps", "KB/s")
+            local recv = getNetworkStat("Data Receive Kbps", "KB/s")
 
-            -- Use the higher FPS value for accuracy
-            fps = math.max(fps, heartbeatFps)
-
-            -- memory via collectgarbage
-            local mem = "N/A"
-            pcall(function()
-                local kb = collectgarbage("count")
-                if kb then mem = string.format("%.1f MB", kb / 1024) end
-            end)
-
-            -- ping: safe pcall to Stats, simplified to raw value
-            local ping = "N/A"
-            pcall(function()
-                local item = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Ping"]
-                if item and type(item.GetValue) == "function" then
-                    ping = tostring(math.floor(item:GetValue())) -- Nur der numerische Wert
-                end
-            end)
-
-            -- net: safe pcall (may remain N/A depending on executor/game)
-            local sent, recv = "N/A", "N/A"
-            pcall(function()
-                local s = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Send Kbps"]
-                local r = Stats.Network and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem["Data Receive Kbps"]
-                if s and type(s.GetValue) == "function" then sent = tostring(math.floor(s:GetValue())) .. " KB/s" end
-                if r and type(r.GetValue) == "function" then recv = tostring(math.floor(r:GetValue())) .. " KB/s" end
-            end)
-
-            local text = ("FPS: %d\nPing: %s\nMemory: %s\nNetwork Sent: %s\nNetwork Received: %s")
-                :format(fps, ping, mem, sent, recv)
+            local text = ("FPS: %s\nPing: %s\nMemory: %s\nNetwork Sent: %s\nNetwork Received: %s")
+                :format(fps > 0 and tostring(fps) or "N/A", ping, mem, sent, recv)
 
             -- Text aktualisieren mit der Set-Methode
             pcall(function()
