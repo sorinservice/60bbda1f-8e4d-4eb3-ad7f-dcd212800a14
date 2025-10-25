@@ -9,7 +9,7 @@ return function(Tab, Aurexis, Window, ctx)
             title = title .. " — " .. opts.subtext
         end
         if opts.recommended and not opts.description then
-            opts.description = "✓ Recommended by Sorin"
+            opts.description = "Most recommended by Sorin"
         end
 
         Tab:CreateButton({
