@@ -11,7 +11,7 @@ end
 
 -- 2) Build window (we'll briefly hide it while we preload)
 local Window = Aurexis:CreateWindow({
-    Name = "Aurexis ScriptHub",
+    Name = "Argh!!! Du schon wieder?!!!",
     Subtitle = "SorinSoftwares",
     LoadingEnabled = true,
     ConfigSettings = { RootFolder = nil, 
