@@ -49,8 +49,10 @@ return function(Tab, Aurexis, Window, ctx)
     ----------------------------------------------------------------
 
     local scripts = {
+        { name = "Chilli Hub", url = "https://raw.githubusercontent.com/tienkhanh1/spicy/main/Chilli.lua", subtext = "Best one i could find" },
         { name = "Rift Hub",   url = "https://rifton.top/loader.lua" },
-        { name = "Chilli Hub", url = "https://raw.githubusercontent.com/tienkhanh1/spicy/main/Chilli.lua" },
+        { name = "Frostware",  url = "https://raw.githubusercontent.com/Jake-Brock/Scripts/main/Fw%20SAB.lua", subtext = "Good Script. Using this, will close SorinHub"}
+
 
         -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
     }
