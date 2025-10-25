@@ -50,6 +50,7 @@ return function(Tab, Aurexis, Window, ctx)
 
     local scripts = {
         { name = "Rift Hub",   url = "https://rifton.top/loader.lua" },
+        { name = "Chilli Hub", url = "https://raw.githubusercontent.com/tienkhanh1/spicy/main/Chilli.lua" },
 
         -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
     }
