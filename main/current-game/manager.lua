@@ -32,11 +32,6 @@ return {
              name   = "3008 [2.73]",
              module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/3008.lua",
          },
-
-        [109983668079237] = { -- StealABrainrot PlaceID
-             name   = "Steal a Brainrot",
-             module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/Steal%20a%20Brainrot.lua",
-         },
         
     },
 }
