@@ -1,4 +1,4 @@
--- current-game/games/EmergencyHamburg.lua
+-- current-game/games/Steal a Brainrot.lua
 return function(Tab, Aurexis, Window, ctx)
 
     local function addScript(displayName, source, opts)
@@ -16,14 +16,6 @@ return function(Tab, Aurexis, Window, ctx)
             Name = title,
             Description = opts.description, -- nur wenn gesetzt
             Callback = function()
-                -- 🔔 Pre-execution notification
-                Aurexis:Notification({
-                    Title = displayName .. " is being executed",
-                    Icon = "info",
-                    ImageSource = "Material",
-                    Content = "Please wait..."
-                })
-
                 local ok, err = pcall(function()
                     if opts.raw then
                         assert(type(source) == "string" and #source > 0, "empty raw source")
@@ -55,12 +47,13 @@ return function(Tab, Aurexis, Window, ctx)
     end
 
     ----------------------------------------------------------------
+
     local scripts = {
-        { name = "Chilli Hub",   url = "https://raw.githubusercontent.com/UCT-hub/main/refs/heads/main/stealabrainrot", recommended = true },
+        { name = "Chilli Hub",   url = "https://raw.githubusercontent.com/UCT-hub/main/refs/heads/main/stealabrainrot" },
 
-        -- { name = "Inline Demo", raw = 'print("hi from inline")' }
+        -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
     }
-
+    
     -- Sort: recommended first, then alphabetically within group
     table.sort(scripts, function(a, b)
         if a.recommended ~= b.recommended then
