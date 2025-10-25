@@ -369,7 +369,7 @@ return function(Tab, Aurexis, Window, ctx)
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr == LocalPlayer and not STATE.showSelf then
                 hideObj(pool[plr])
-                goto continue
+                continue
             end
 
             local char = plr.Character
@@ -377,36 +377,36 @@ return function(Tab, Aurexis, Window, ctx)
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if not (hum and hum.Health > 0 and hrp) then
                 hideObj(pool[plr])
-                goto continue
+                continue
             end
 
             local dist = (myHRP.Position - hrp.Position).Magnitude
             if dist > STATE.maxDistance then
                 hideObj(pool[plr])
-                goto continue
+                continue
             end
 
             local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 6, 0))
             if not onScreen then
                 hideObj(pool[plr])
-                goto continue
+                continue
             end
 
             local category = categorize(plr)
             if category == ESP_TYPE.FRIEND and not STATE.showFriendESP then
                 hideObj(pool[plr])
-                goto continue
+                continue
             elseif category == ESP_TYPE.ENEMY and not STATE.showEnemyESP then
                 hideObj(pool[plr])
-                goto continue
+                continue
             elseif category == ESP_TYPE.NEUTRAL and not STATE.showNeutralESP then
                 hideObj(pool[plr])
-                goto continue
+                continue
             end
 
             local obj = alloc(plr)
             if not obj then
-                goto continue
+                continue
             end
 
             local textColor, boneColor = getCategoryColors(category)
@@ -479,7 +479,6 @@ return function(Tab, Aurexis, Window, ctx)
                 end
             end
 
-            ::continue::
         end
     end)
 
