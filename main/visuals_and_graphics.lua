@@ -140,6 +140,28 @@ return function(Tab, Aurexis, Window, ctx)
         })
     end
 
+    local FONT_OPTIONS = {
+        ["Gotham Bold"] = 2,
+        ["System"] = 1,
+        ["Monospace"] = 3,
+        ["UI"] = 0,
+    }
+    local FONT_LIST = { "Gotham Bold", "System", "Monospace", "UI" }
+
+    local CATEGORY_BADGES = {
+        [ESP_TYPE.FRIEND] = "FR",
+        [ESP_TYPE.ENEMY] = "EN",
+        [ESP_TYPE.NEUTRAL] = "NE",
+        [ESP_TYPE.SELF] = "ME",
+    }
+
+    STATE.fontStyle = STATE.fontStyle or "Gotham Bold"
+    STATE.showCategoryBadge = STATE.showCategoryBadge ~= false
+
+    local function currentFontId()
+        return FONT_OPTIONS[STATE.fontStyle] or FONT_OPTIONS["Gotham Bold"]
+    end
+
     local function NewText(size)
         local text = Drawing and Drawing.new("Text") or {}
         if Drawing then
@@ -148,7 +170,7 @@ return function(Tab, Aurexis, Window, ctx)
             text.Center = true
             text.Outline = STATE.outlineText
             text.Transparency = 1
-            text.Font = 2
+            text.Font = currentFontId()
         end
         return text
     end
@@ -168,6 +190,26 @@ return function(Tab, Aurexis, Window, ctx)
     ------------------------------------------------------------
     local pool = {}
 
+    local function applyFontToObj(obj)
+        if not (Drawing and obj) then
+            return
+        end
+        local fontId = currentFontId()
+        obj.textMain.Font = fontId
+        obj.textUser.Font = fontId
+        obj.textEquip.Font = fontId
+        obj.textDist.Font = fontId
+    end
+
+    local function refreshFontPool()
+        if not Drawing then
+            return
+        end
+        for _, obj in pairs(pool) do
+            applyFontToObj(obj)
+        end
+    end
+
     local function alloc(plr)
         if pool[plr] or not Drawing then
             return pool[plr]
@@ -185,6 +227,7 @@ return function(Tab, Aurexis, Window, ctx)
             obj.bones[i] = NewLine()
         end
 
+        applyFontToObj(obj)
         pool[plr] = obj
         return obj
     end
@@ -343,6 +386,15 @@ return function(Tab, Aurexis, Window, ctx)
         tObj.Visible = true
     end
 
+    local function formatMainDisplay(plr, category)
+        local base = plr.DisplayName or plr.Name
+        if not STATE.showCategoryBadge then
+            return base
+        end
+        local badge = CATEGORY_BADGES[category] or "--"
+        return string.format("[%s] %s", badge, base)
+    end
+
     ------------------------------------------------------------
     -- ESP render loop
     ------------------------------------------------------------
@@ -416,7 +468,7 @@ return function(Tab, Aurexis, Window, ctx)
             if STATE.showDisplayName then
                 placeText(
                     obj.textMain,
-                    plr.DisplayName or plr.Name,
+                    formatMainDisplay(plr, category),
                     screenX,
                     yCursor,
                     textColor,
@@ -808,6 +860,14 @@ return function(Tab, Aurexis, Window, ctx)
     }, "esp_dispname")
 
     Tab:CreateToggle({
+        Name = "Show Category Badge",
+        CurrentValue = STATE.showCategoryBadge,
+        Callback = function(value)
+            STATE.showCategoryBadge = value
+        end,
+    }, "esp_badge")
+
+    Tab:CreateToggle({
         Name = "Show @Username",
         CurrentValue = STATE.showUsername,
         Callback = function(value)
@@ -838,6 +898,19 @@ return function(Tab, Aurexis, Window, ctx)
             STATE.showBones = value
         end,
     }, "esp_bones")
+
+    Tab:CreateDropdown({
+        Name = "ESP Font Style",
+        Options = FONT_LIST,
+        CurrentOption = { STATE.fontStyle },
+        Callback = function(option)
+            if type(option) == "table" then
+                option = option[1]
+            end
+            STATE.fontStyle = option or STATE.fontStyle
+            refreshFontPool()
+        end,
+    }, "esp_fontstyle")
 
     Tab:CreateLabel({
         Text = "Friends = Roblox friends of your account. Enemies = players on other teams.",
