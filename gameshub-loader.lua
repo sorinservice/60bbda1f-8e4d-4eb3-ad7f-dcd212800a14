@@ -38,13 +38,13 @@ Aurexis:Notification({ Title="SorinHub", Icon="sparkle", ImageSource="Material",
 
 -- 3) Remote modules
 local TABS = {
---    Developer        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Developer.lua",
---    FEScripts        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/FE-Scripts.lua",
---    UniversalScripts = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/UniversalScripts.lua",
---    CurrentGame      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/game-loader.lua",
---    ManagerCfg       = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua",
---    HubSettings      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubSettings.lua",
---    Utility          = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Utility.lua"
+    Developer        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Developer.lua",
+    FEScripts        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/FE-Scripts.lua",
+    UniversalScripts = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/UniversalScripts.lua",
+    CurrentGame      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/game-loader.lua",
+    ManagerCfg       = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua",
+    HubSettings      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubSettings.lua",
+    Utility          = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Utility.lua"
 }
 
 -- 4) Helpers (no cachebusters on raw)
@@ -90,10 +90,10 @@ end
 Window:CreateHomeTab()
 
 -- 7) Create tabs (now they'll appear already titled & populated)
---attachTab("FE Scripts",     TABS.FEScripts,            "insert_emoticon")
---attachTab("Universal Scripts",  TABS.UniversalScripts, "admin_panel_settings") 
---attachTab("Developer",      TABS.Developer,            "extension")
---attachTab("HubSettings",    TABS.HubSettings,          "settings")
+attachTab("FE Scripts",     TABS.FEScripts,            "insert_emoticon")
+attachTab("Universal Scripts",  TABS.UniversalScripts, "admin_panel_settings") 
+attachTab("Developer",      TABS.Developer,            "extension")
+attachTab("HubSettings",    TABS.HubSettings,          "settings")
 
 -- Dynamisches Icon je nach Support
 local currentIcon = preCtx and "data_usage" or "_error_outline"
