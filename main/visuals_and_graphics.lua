@@ -23,9 +23,9 @@ return function(Tab, Aurexis, Window, ctx)
     -- ESP runtime state
     ------------------------------------------------------------
     local STATE = {
-        showFriendESP = true,
-        showEnemyESP = true,
-        showNeutralESP = true,
+        showFriendESP = false,
+        showEnemyESP = false,
+        showNeutralESP = false,
         showSelf = false,
 
         showDisplayName = true,
