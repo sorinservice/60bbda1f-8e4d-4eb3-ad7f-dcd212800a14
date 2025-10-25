@@ -9,7 +9,7 @@ return function(Tab, Aurexis, Window, ctx)
             title = title .. " - " .. opts.subtext
         end
         if opts.recommended and not opts.description then
-            opts.description = "Recommended by Sorin"
+            opts.description = " Most Recommended by Sorin"
         end
 
         Tab:CreateButton({
@@ -58,7 +58,7 @@ return function(Tab, Aurexis, Window, ctx)
     Tab:CreateSection("Main Scripts")
     local scripts = {
         { name = "Vortex",   url = "https://vortexsoft.pages.dev/api/vortex.lua", recommended = true },
-        { name = "Nova",     url = "https://novaw.xyz/MainScript.lua" },
+        { name = "Nova",     url = "https://novaw.xyz/MainScript.lua", description = "very few features :(" },
         { name = "BeanzHub", url = "https://raw.githubusercontent.com/pid4k/scripts/main/BeanzHub.lua" },
     }
 
