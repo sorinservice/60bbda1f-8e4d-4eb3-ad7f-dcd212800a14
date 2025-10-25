@@ -49,7 +49,7 @@ return function(Tab, Aurexis, Window, ctx)
     ----------------------------------------------------------------
 
     local scripts = {
-        { name = "Voidware",   url = "https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/nightsintheforest.lua", subtext = "I dont now. is this good? Never tested before" },
+        { name = "Voidware",   url = "https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/nightsintheforest.lua" },
         { name = "H4Scripts",  url = "https://raw.githubusercontent.com/H4xScripts/Loader/refs/heads/main/loader.lua", subtext = "Needs a Key", recommended = true },
     }
 
