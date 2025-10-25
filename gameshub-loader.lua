@@ -11,7 +11,7 @@ end
 
 -- 2) Build window (we'll briefly hide it while we preload)
 local Window = Aurexis:CreateWindow({
-    Name = "Lumm di da... Wat willst du scho wieder?!",
+    Name = "SorinHub Pre-Release",
     Subtitle = "SorinSoftwares",
     LoadingEnabled = true,
     ConfigSettings = { RootFolder = nil, 
