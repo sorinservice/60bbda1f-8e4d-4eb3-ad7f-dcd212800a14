@@ -1,96 +1,80 @@
 -- visuals_and_graphics.lua
 -- Unified "Visuals & Graphics" tab for Aurexis Interface Library
--- Includes:
---   - ESP (Friends / Enemy / Neutral / Self) with Drawing API
---   - Player info overlays (distance, equipped, etc.)
---   - Skeleton bones rendering
---   - Fullbright / X-Ray / Camera Zoom
-
+-- Includes ESP overlays plus Fullbright, X-Ray and camera helpers.
 return function(Tab, Aurexis, Window, ctx)
+    ------------------------------------------------------------
+    -- Core services
+    ------------------------------------------------------------
+    local Players = game:GetService("Players")
+    local Teams = game:GetService("Teams")
+    local RunService = game:GetService("RunService")
+    local Lighting = game:GetService("Lighting")
+    local Workspace = game:GetService("Workspace")
+
+    local LocalPlayer = Players.LocalPlayer
+    local Camera = Workspace.CurrentCamera
 
     ------------------------------------------------------------
-    -- == SERVICES / CORE ==
+    -- Self-ESP policy
     ------------------------------------------------------------
-    local Players      = game:GetService("Players")
-    local Teams        = game:GetService("Teams")
-    local RunService   = game:GetService("RunService")
-    local Lighting     = game:GetService("Lighting")
-    local Workspace    = game:GetService("Workspace")
-
-    local LocalPlayer  = Players.LocalPlayer
-    local Camera       = Workspace.CurrentCamera
+    local SHOW_SELF_POLICY = "toggle" -- off | on | toggle
 
     ------------------------------------------------------------
-    -- == SELF-ESP POLICY ==
-    -- "off"    => never draw LocalPlayer, no toggle in UI
-    -- "on"     => always draw LocalPlayer, no toggle in UI
-    -- "toggle" => expose toggle in UI
-    ------------------------------------------------------------
-    local SHOW_SELF_POLICY = "toggle"
-
-
-    ------------------------------------------------------------
-    -- == ESP STATE ==
-    -- All runtime switches for ESP (visual overlays)
+    -- ESP runtime state
     ------------------------------------------------------------
     local STATE = {
-        -- category visibility
-        showFriendESP   = true,
-        showEnemyESP    = true,
-        showNeutralESP  = true,
-        showSelf        = false,  -- will be enforced by SHOW_SELF_POLICY each frame
+        showFriendESP = true,
+        showEnemyESP = true,
+        showNeutralESP = true,
+        showSelf = false,
 
-        -- info lines
         showDisplayName = true,
-        showUsername    = false,
-        showEquipped    = false,
-        showDistance    = false,
-        showBones       = false,
+        showUsername = false,
+        showEquipped = false,
+        showDistance = false,
+        showBones = false,
 
-        -- distance clamp
-        maxDistance     = 750,
+        maxDistance = 750,
 
-        -- text style
-        textSizeMain    = 14,
-        textSizeSub     = 13,
-        lineGap         = 2,
-        outlineText     = true,
+        textSizeMain = 14,
+        textSizeSub = 13,
+        lineGap = 2,
+        outlineText = true,
 
-        -- skeleton style
-        bonesThickness  = 2,
+        bonesThickness = 2,
     }
 
     if SHOW_SELF_POLICY == "on" then
         STATE.showSelf = true
     elseif SHOW_SELF_POLICY == "off" then
         STATE.showSelf = false
-    else
-        STATE.showSelf = false
     end
 
-
     ------------------------------------------------------------
-    -- == ESP CATEGORY LOGIC ==
+    -- ESP categorisation helpers
     ------------------------------------------------------------
     local ESP_TYPE = {
-        SELF    = "Self",
-        FRIEND  = "Friend",
-        ENEMY   = "Enemy",
+        SELF = "Self",
+        FRIEND = "Friend",
+        ENEMY = "Enemy",
         NEUTRAL = "Neutral",
     }
 
-    -- small cache to avoid spamming IsFriendsWith() every frame
     local friendCache = {}
 
     local function isFriendTarget(plr)
-        if friendCache[plr] ~= nil then
-            return friendCache[plr]
+        local cached = friendCache[plr]
+        if cached ~= nil then
+            return cached
         end
+
         local ok, isFriend = pcall(function()
             return LocalPlayer:IsFriendsWith(plr.UserId)
         end)
-        friendCache[plr] = (ok and isFriend) or false
-        return friendCache[plr]
+
+        cached = (ok and isFriend) or false
+        friendCache[plr] = cached
+        return cached
     end
 
     Players.PlayerRemoving:Connect(function(plr)
@@ -111,31 +95,27 @@ return function(Tab, Aurexis, Window, ctx)
             return ESP_TYPE.FRIEND
         elseif teamIsEnemy(LocalPlayer, plr) then
             return ESP_TYPE.ENEMY
-        else
-            return ESP_TYPE.NEUTRAL
         end
+        return ESP_TYPE.NEUTRAL
     end
 
-
     ------------------------------------------------------------
-    -- == ESP THEME ==
-    -- Here you define colors for each player category.
-    -- You can swap these later for Sorin cosmic blue/purple branding.
+    -- ESP theme
     ------------------------------------------------------------
     local THEME = {
-        TextFriend   = Color3.fromRGB(0, 255, 150),
-        TextEnemy    = Color3.fromRGB(255, 80, 80),
-        TextNeutral  = Color3.fromRGB(220,220,220),
-        TextSelf     = Color3.fromRGB(100,180,255),
+        TextFriend = Color3.fromRGB(0, 255, 150),
+        TextEnemy = Color3.fromRGB(255, 80, 80),
+        TextNeutral = Color3.fromRGB(220, 220, 220),
+        TextSelf = Color3.fromRGB(100, 180, 255),
 
-        TextUsername = Color3.fromRGB(180,180,180),
-        TextEquip    = Color3.fromRGB(170,170,170),
-        TextDist     = Color3.fromRGB(200,200,200),
+        TextUsername = Color3.fromRGB(180, 180, 180),
+        TextEquip = Color3.fromRGB(170, 170, 170),
+        TextDist = Color3.fromRGB(200, 200, 200),
 
-        BonesFriend  = Color3.fromRGB(0,200,120),
-        BonesEnemy   = Color3.fromRGB(255,100,100),
-        BonesNeutral = Color3.fromRGB(0,200,255),
-        BonesSelf    = Color3.fromRGB(100,180,255),
+        BonesFriend = Color3.fromRGB(0, 200, 120),
+        BonesEnemy = Color3.fromRGB(255, 100, 100),
+        BonesNeutral = Color3.fromRGB(0, 200, 255),
+        BonesSelf = Color3.fromRGB(100, 180, 255),
     }
 
     local function getCategoryColors(category)
@@ -145,95 +125,99 @@ return function(Tab, Aurexis, Window, ctx)
             return THEME.TextEnemy, THEME.BonesEnemy
         elseif category == ESP_TYPE.SELF then
             return THEME.TextSelf, THEME.BonesSelf
-        else
-            return THEME.TextNeutral, THEME.BonesNeutral
         end
+        return THEME.TextNeutral, THEME.BonesNeutral
     end
 
-
     ------------------------------------------------------------
-    -- == DRAWING HELPERS ==
+    -- Drawing helpers (gracefully degrade if Drawing API is missing)
     ------------------------------------------------------------
     if not Drawing then
         Tab:CreateSection("Visuals & Graphics")
         Tab:CreateLabel({
-            Name = "Your executor does not expose the Drawing API. ESP features disabled."
+            Text = "Your executor does not expose the Drawing API. ESP features remain disabled.",
+            Style = 3
         })
-        -- we still continue building Graphics below (Fullbright etc.),
-        -- so we DO NOT return here.
     end
 
     local function NewText(size)
-        local t = Drawing and Drawing.new("Text") or {}
+        local text = Drawing and Drawing.new("Text") or {}
         if Drawing then
-            t.Visible = false
-            t.Size = size
-            t.Center = true
-            t.Outline = STATE.outlineText
-            t.Transparency = 1
-            t.Font = 2 -- typical executor Gotham-like font index
+            text.Visible = false
+            text.Size = size
+            text.Center = true
+            text.Outline = STATE.outlineText
+            text.Transparency = 1
+            text.Font = 2
         end
-        return t
+        return text
     end
 
     local function NewLine()
-        local ln = Drawing and Drawing.new("Line") or {}
+        local line = Drawing and Drawing.new("Line") or {}
         if Drawing then
-            ln.Visible = false
-            ln.Thickness = STATE.bonesThickness
-            ln.Transparency = 1
+            line.Visible = false
+            line.Thickness = STATE.bonesThickness
+            line.Transparency = 1
         end
-        return ln
+        return line
     end
 
-
     ------------------------------------------------------------
-    -- == ESP POOL ==
-    -- We keep per-player objects so we don't constantly recreate Drawing items.
+    -- ESP pool
     ------------------------------------------------------------
-    local pool = {} -- [plr] = { textMain, textUser, textEquip, textDist, bones = {} }
+    local pool = {}
 
     local function alloc(plr)
-        if pool[plr] then return pool[plr] end
-        if not Drawing then return nil end
+        if pool[plr] or not Drawing then
+            return pool[plr]
+        end
 
         local obj = {
-            textMain  = NewText(STATE.textSizeMain),
-            textUser  = NewText(STATE.textSizeSub),
+            textMain = NewText(STATE.textSizeMain),
+            textUser = NewText(STATE.textSizeSub),
             textEquip = NewText(STATE.textSizeSub),
-            textDist  = NewText(STATE.textSizeSub),
-            bones     = {},
+            textDist = NewText(STATE.textSizeSub),
+            bones = {},
         }
-        for i=1,16 do
+
+        for i = 1, 16 do
             obj.bones[i] = NewLine()
         end
+
         pool[plr] = obj
         return obj
     end
 
     local function hideObj(obj)
-        if not obj or not Drawing then return end
-        obj.textMain.Visible  = false
-        obj.textUser.Visible  = false
+        if not obj or not Drawing then
+            return
+        end
+        obj.textMain.Visible = false
+        obj.textUser.Visible = false
         obj.textEquip.Visible = false
-        obj.textDist.Visible  = false
-        for _,ln in ipairs(obj.bones) do
-            ln.Visible = false
+        obj.textDist.Visible = false
+        for _, line in ipairs(obj.bones) do
+            line.Visible = false
         end
     end
 
     local function free(plr)
-        local o = pool[plr]
-        if not o then return end
+        local obj = pool[plr]
+        if not obj then
+            return
+        end
+
         if Drawing then
-            pcall(function() o.textMain:Remove() end)
-            pcall(function() o.textUser:Remove() end)
-            pcall(function() o.textEquip:Remove() end)
-            pcall(function() o.textDist:Remove() end)
-            for _,ln in ipairs(o.bones) do
-                pcall(function() ln:Remove() end)
+            pcall(function() obj.textMain:Remove() end)
+            pcall(function() obj.textUser:Remove() end)
+            pcall(function() obj.textEquip:Remove() end)
+            pcall(function() obj.textDist:Remove() end)
+            for _, line in ipairs(obj.bones) do
+                pcall(function() line:Remove() end)
             end
         end
+
         pool[plr] = nil
     end
 
@@ -242,104 +226,116 @@ return function(Tab, Aurexis, Window, ctx)
         friendCache[plr] = nil
     end)
 
-
     ------------------------------------------------------------
-    -- == ESP HELPERS ==
+    -- ESP helpers
     ------------------------------------------------------------
     local function findEquippedToolName(char)
-        if not char then return nil end
-        -- direct Tool
+        if not char then
+            return nil
+        end
+
         local tool = char:FindFirstChildOfClass("Tool")
-        if tool then return tool.Name end
-        -- deep search
-        for _,d in ipairs(char:GetDescendants()) do
-            if d:IsA("Tool") then
-                return d.Name
+        if tool then
+            return tool.Name
+        end
+
+        for _, desc in ipairs(char:GetDescendants()) do
+            if desc:IsA("Tool") then
+                return desc.Name
             end
         end
+
         return nil
     end
 
     local BONES_R15 = {
-        {"UpperTorso","Head"},
-        {"LowerTorso","UpperTorso"},
+        {"UpperTorso", "Head"},
+        {"LowerTorso", "UpperTorso"},
 
-        {"UpperTorso","LeftUpperArm"},
-        {"LeftUpperArm","LeftLowerArm"},
-        {"LeftLowerArm","LeftHand"},
+        {"UpperTorso", "LeftUpperArm"},
+        {"LeftUpperArm", "LeftLowerArm"},
+        {"LeftLowerArm", "LeftHand"},
 
-        {"UpperTorso","RightUpperArm"},
-        {"RightUpperArm","RightLowerArm"},
-        {"RightLowerArm","RightHand"},
+        {"UpperTorso", "RightUpperArm"},
+        {"RightUpperArm", "RightLowerArm"},
+        {"RightLowerArm", "RightHand"},
 
-        {"LowerTorso","LeftUpperLeg"},
-        {"LeftUpperLeg","LeftLowerLeg"},
-        {"LeftLowerLeg","LeftFoot"},
+        {"LowerTorso", "LeftUpperLeg"},
+        {"LeftUpperLeg", "LeftLowerLeg"},
+        {"LeftLowerLeg", "LeftFoot"},
 
-        {"LowerTorso","RightUpperLeg"},
-        {"RightUpperLeg","RightLowerLeg"},
-        {"RightLowerLeg","RightFoot"},
+        {"LowerTorso", "RightUpperLeg"},
+        {"RightUpperLeg", "RightLowerLeg"},
+        {"RightLowerLeg", "RightFoot"},
     }
 
     local BONES_R6 = {
-        {"Torso","Head"},
-        {"Torso","Left Arm"},
-        {"Torso","Right Arm"},
-        {"Torso","Left Leg"},
-        {"Torso","Right Leg"},
+        {"Torso", "Head"},
+        {"Torso", "Left Arm"},
+        {"Torso", "Right Arm"},
+        {"Torso", "Left Leg"},
+        {"Torso", "Right Leg"},
     }
 
     local function partPos(char, name)
-        local p = char and char:FindFirstChild(name)
-        return p and p.Position
+        local part = char and char:FindFirstChild(name)
+        return part and part.Position
     end
 
-    local function setLine(ln, a, b, color, thickness)
-        if not (ln and a and b and Drawing) then
-            if ln then ln.Visible = false end
+    local function setLine(line, a, b, color, thickness)
+        if not (line and a and b and Drawing) then
+            if line then
+                line.Visible = false
+            end
             return
         end
 
-        local A, va = Camera:WorldToViewportPoint(a)
-        local B, vb = Camera:WorldToViewportPoint(b)
-        if not (va or vb) then
-            ln.Visible = false
+        local A, aVisible = Camera:WorldToViewportPoint(a)
+        local B, bVisible = Camera:WorldToViewportPoint(b)
+        if not (aVisible or bVisible) then
+            line.Visible = false
             return
         end
 
-        ln.From = Vector2.new(A.X, A.Y)
-        ln.To   = Vector2.new(B.X, B.Y)
-        ln.Visible = true
-        ln.Thickness = thickness
-        ln.Color = color
+        line.From = Vector2.new(A.X, A.Y)
+        line.To = Vector2.new(B.X, B.Y)
+        line.Visible = true
+        line.Thickness = thickness
+        line.Color = color
     end
 
     local function drawSkeletonLines(obj, char, color, thickness)
-        if not Drawing then return end
+        if not Drawing then
+            return
+        end
+
         local isR6 = char and char:FindFirstChild("Torso") ~= nil
         local layout = isR6 and BONES_R6 or BONES_R15
 
-        for i,link in ipairs(layout) do
+        for index, link in ipairs(layout) do
             setLine(
-                obj.bones[i],
+                obj.bones[index],
                 partPos(char, link[1]),
                 partPos(char, link[2]),
                 color,
                 thickness
             )
         end
-        -- hide leftovers
-        for i = #layout+1, #obj.bones do
-            obj.bones[i].Visible = false
+
+        for index = #layout + 1, #obj.bones do
+            obj.bones[index].Visible = false
         end
     end
 
     local function placeText(tObj, text, x, y, color, outline)
-        if not (Drawing and tObj) then return end
+        if not (Drawing and tObj) then
+            return
+        end
         if not text or text == "" then
             tObj.Visible = false
             return
         end
+
         tObj.Text = text
         tObj.Position = Vector2.new(x, y)
         tObj.Color = color
@@ -347,40 +343,38 @@ return function(Tab, Aurexis, Window, ctx)
         tObj.Visible = true
     end
 
-
     ------------------------------------------------------------
-    -- == RENDER LOOP (ESP) ==
+    -- ESP render loop
     ------------------------------------------------------------
     RunService.RenderStepped:Connect(function()
-        -- keep SHOW_SELF_POLICY authoritative
         if SHOW_SELF_POLICY == "off" then
             STATE.showSelf = false
         elseif SHOW_SELF_POLICY == "on" then
             STATE.showSelf = true
         end
 
-        -- If Drawing API doesn't exist, skip ESP work entirely:
         if not Drawing then
             return
         end
 
         local myChar = LocalPlayer and LocalPlayer.Character
-        local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
         if not myHRP then
-            for _,o in pairs(pool) do hideObj(o) end
+            for _, obj in pairs(pool) do
+                hideObj(obj)
+            end
             return
         end
 
-        for _,plr in ipairs(Players:GetPlayers()) do
-            -- Self handling
+        for _, plr in ipairs(Players:GetPlayers()) do
             if plr == LocalPlayer and not STATE.showSelf then
                 hideObj(pool[plr])
                 goto continue
             end
 
             local char = plr.Character
-            local hum  = char and char:FindFirstChildOfClass("Humanoid")
-            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if not (hum and hum.Health > 0 and hrp) then
                 hideObj(pool[plr])
                 goto continue
@@ -392,47 +386,40 @@ return function(Tab, Aurexis, Window, ctx)
                 goto continue
             end
 
-            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0,6,0))
+            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 6, 0))
             if not onScreen then
                 hideObj(pool[plr])
                 goto continue
             end
 
             local category = categorize(plr)
-
-            -- respect visibility toggles per category
             if category == ESP_TYPE.FRIEND and not STATE.showFriendESP then
                 hideObj(pool[plr])
                 goto continue
-            end
-            if category == ESP_TYPE.ENEMY and not STATE.showEnemyESP then
+            elseif category == ESP_TYPE.ENEMY and not STATE.showEnemyESP then
+                hideObj(pool[plr])
+                goto continue
+            elseif category == ESP_TYPE.NEUTRAL and not STATE.showNeutralESP then
                 hideObj(pool[plr])
                 goto continue
             end
-            if category == ESP_TYPE.NEUTRAL and not STATE.showNeutralESP then
-                hideObj(pool[plr])
-                goto continue
-            end
-            -- SELF is covered by STATE.showSelf above
 
             local obj = alloc(plr)
             if not obj then
                 goto continue
             end
 
-            local mainColor, boneColor = getCategoryColors(category)
-
-            -- vertical stacking
+            local textColor, boneColor = getCategoryColors(category)
             local screenX, screenY = pos.X, pos.Y
             local yCursor = screenY
 
-            -- display name (main line)
             if STATE.showDisplayName then
                 placeText(
                     obj.textMain,
                     plr.DisplayName or plr.Name,
-                    screenX, yCursor,
-                    mainColor,
+                    screenX,
+                    yCursor,
+                    textColor,
                     STATE.outlineText
                 )
                 yCursor = yCursor + obj.textMain.Size + STATE.lineGap
@@ -440,12 +427,12 @@ return function(Tab, Aurexis, Window, ctx)
                 obj.textMain.Visible = false
             end
 
-            -- @username
             if STATE.showUsername then
                 placeText(
                     obj.textUser,
                     "@" .. plr.Name,
-                    screenX, yCursor,
+                    screenX,
+                    yCursor,
                     THEME.TextUsername,
                     STATE.outlineText
                 )
@@ -454,14 +441,14 @@ return function(Tab, Aurexis, Window, ctx)
                 obj.textUser.Visible = false
             end
 
-            -- Equipped tool
             if STATE.showEquipped then
                 local toolName = findEquippedToolName(char)
-                local eqTxt = toolName and ("["..toolName.."]") or "[Nothing equipped]"
+                local equippedText = toolName and ("[" .. toolName .. "]") or "[Nothing equipped]"
                 placeText(
                     obj.textEquip,
-                    eqTxt,
-                    screenX, yCursor,
+                    equippedText,
+                    screenX,
+                    yCursor,
                     THEME.TextEquip,
                     STATE.outlineText
                 )
@@ -470,13 +457,12 @@ return function(Tab, Aurexis, Window, ctx)
                 obj.textEquip.Visible = false
             end
 
-            -- Distance (last line)
             if STATE.showDistance then
-                local dTxt = string.format("%dm", math.floor(dist + 0.5))
                 placeText(
                     obj.textDist,
-                    dTxt,
-                    screenX, yCursor,
+                    string.format("%dm", math.floor(dist + 0.5)),
+                    screenX,
+                    yCursor,
                     THEME.TextDist,
                     STATE.outlineText
                 )
@@ -485,32 +471,23 @@ return function(Tab, Aurexis, Window, ctx)
                 obj.textDist.Visible = false
             end
 
-            -- Skeleton overlay
             if STATE.showBones then
-                drawSkeletonLines(
-                    obj,
-                    char,
-                    boneColor,
-                    STATE.bonesThickness
-                )
+                drawSkeletonLines(obj, char, boneColor, STATE.bonesThickness)
             else
-                for _,ln in ipairs(obj.bones) do ln.Visible = false end
+                for _, line in ipairs(obj.bones) do
+                    line.Visible = false
+                end
             end
 
             ::continue::
         end
     end)
 
-
     ------------------------------------------------------------
-    -- == GRAPHICS / LIGHTING BLOCK ==
-    -- Fullbright, X-Ray, Camera Zoom. We gate effects behind BOOT.ready
-    -- so we don't instantly flip visuals before flags are loaded.
+    -- Graphics helpers (Fullbright, X-Ray, Zoom)
     ------------------------------------------------------------
-
     local BOOT = { ready = false }
 
-    -- helper easing
     local function approach(current, target, alpha)
         alpha = math.clamp(alpha or 0.15, 0, 1)
         return current + (target - current) * alpha
@@ -525,7 +502,7 @@ return function(Tab, Aurexis, Window, ctx)
     end
 
     --------------------------------------------------------
-    -- Fullbright system (dynamic, doesn't just set ClockTime)
+    -- Fullbright
     --------------------------------------------------------
     local FB = {
         enabled = false,
@@ -534,36 +511,38 @@ return function(Tab, Aurexis, Window, ctx)
         saved = nil,
         targets = {
             minBrightness = 2.4,
-            minExposure   = 0.8,
-            targetAmbient = Color3.fromRGB(180,180,180),
-        }
+            minExposure = 0.8,
+            targetAmbient = Color3.fromRGB(180, 180, 180),
+        },
     }
 
     local function fb_enable()
-        if FB.enabled then return end
+        if FB.enabled then
+            return
+        end
         FB.enabled = true
 
-        -- Save original Lighting state so we can restore
         FB.saved = {
             Brightness = Lighting.Brightness,
             Exposure = Lighting.ExposureCompensation,
             Ambient = Lighting.Ambient,
             OutdoorAmbient = Lighting.OutdoorAmbient,
             EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
-            EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale
+            EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
         }
 
         FB.cc = Instance.new("ColorCorrectionEffect")
         FB.cc.Name = "Fullbright_Aurexis"
         FB.cc.Brightness = 0
-        FB.cc.Contrast   = 0
+        FB.cc.Contrast = 0
         FB.cc.Saturation = 0
         FB.cc.Parent = Lighting
 
         FB.loop = RunService.RenderStepped:Connect(function()
-            if not FB.enabled then return end
+            if not FB.enabled then
+                return
+            end
 
-            -- Boost brightness/exposure up to min safe brightness
             if Lighting.Brightness < FB.targets.minBrightness then
                 Lighting.Brightness = approach(Lighting.Brightness, FB.targets.minBrightness, 0.18)
             end
@@ -571,17 +550,15 @@ return function(Tab, Aurexis, Window, ctx)
                 Lighting.ExposureCompensation = approach(Lighting.ExposureCompensation, FB.targets.minExposure, 0.18)
             end
 
-            -- Lift ambient lighting if scene is too dark
             local amb = Lighting.Ambient
-            if (amb.R + amb.G + amb.B)/3 < 0.55 then
+            if (amb.R + amb.G + amb.B) / 3 < 0.55 then
                 Lighting.Ambient = lerpColor(amb, FB.targets.targetAmbient, 0.12)
             end
             local oamb = Lighting.OutdoorAmbient
-            if (oamb.R + oamb.G + oamb.B)/3 < 0.55 then
+            if (oamb.R + oamb.G + oamb.B) / 3 < 0.55 then
                 Lighting.OutdoorAmbient = lerpColor(oamb, FB.targets.targetAmbient, 0.12)
             end
 
-            -- Nudge PBR env lighting closer to 1
             if Lighting.EnvironmentDiffuseScale and Lighting.EnvironmentDiffuseScale < 1 then
                 Lighting.EnvironmentDiffuseScale = approach(Lighting.EnvironmentDiffuseScale, 1, 0.25)
             end
@@ -589,19 +566,26 @@ return function(Tab, Aurexis, Window, ctx)
                 Lighting.EnvironmentSpecularScale = approach(Lighting.EnvironmentSpecularScale, 1, 0.25)
             end
 
-            -- mild CC lift
-            FB.cc.Brightness = approach(FB.cc.Brightness, 0.09, 0.10)
-            FB.cc.Contrast   = approach(FB.cc.Contrast,   0.06, 0.10)
+            FB.cc.Brightness = approach(FB.cc.Brightness, 0.09, 0.1)
+            FB.cc.Contrast = approach(FB.cc.Contrast, 0.06, 0.1)
         end)
     end
 
     local function fb_disable()
-        if not FB.enabled then return end
+        if not FB.enabled then
+            return
+        end
         FB.enabled = false
-        if FB.loop then FB.loop:Disconnect(); FB.loop = nil end
-        if FB.cc then FB.cc:Destroy(); FB.cc = nil end
 
-        -- restore previous lighting
+        if FB.loop then
+            FB.loop:Disconnect()
+            FB.loop = nil
+        end
+        if FB.cc then
+            FB.cc:Destroy()
+            FB.cc = nil
+        end
+
         if FB.saved then
             Lighting.Brightness = FB.saved.Brightness
             Lighting.ExposureCompensation = FB.saved.Exposure
@@ -617,35 +601,54 @@ return function(Tab, Aurexis, Window, ctx)
         end
     end
 
-    local function fb_set(v)
-        if not BOOT.ready then return end
-        if v then fb_enable() else fb_disable() end
+    local function fb_set(value)
+        if not BOOT.ready then
+            return
+        end
+        if value then
+            fb_enable()
+        else
+            fb_disable()
+        end
     end
 
-
     --------------------------------------------------------
-    -- X-Ray (world transparency 50%, excludes player chars)
+    -- X-Ray
     --------------------------------------------------------
     local XR = {
         enabled = false,
         tracked = {},
-        conns   = {}
+        conns = {},
     }
 
+    local function clearTable(t)
+        if table.clear then
+            table.clear(t)
+            return
+        end
+        for key in pairs(t) do
+            t[key] = nil
+        end
+    end
+
     local function isCharacterPart(inst)
-        local p = inst
-        while p do
-            if p:FindFirstChildOfClass("Humanoid") then
+        local current = inst
+        while current do
+            if current:FindFirstChildOfClass("Humanoid") then
                 return true
             end
-            p = p.Parent
+            current = current.Parent
         end
         return false
     end
 
     local function tryXray(obj)
-        if not (obj and obj:IsA("BasePart")) then return end
-        if isCharacterPart(obj) then return end
+        if not (obj and obj:IsA("BasePart")) then
+            return
+        end
+        if isCharacterPart(obj) then
+            return
+        end
         XR.tracked[obj] = true
         pcall(function()
             obj.LocalTransparencyModifier = 0.5
@@ -660,57 +663,69 @@ return function(Tab, Aurexis, Window, ctx)
                 end)
             end
         end
-        table.clear(XR.tracked)
+        clearTable(XR.tracked)
     end
 
     local function xr_enable()
-        if XR.enabled then return end
+        if XR.enabled then
+            return
+        end
         XR.enabled = true
 
-        -- apply to existing world
-        for _,d in ipairs(Workspace:GetDescendants()) do
-            tryXray(d)
+        for _, descendant in ipairs(Workspace:GetDescendants()) do
+            tryXray(descendant)
         end
 
-        -- hook future parts
         XR.conns[#XR.conns + 1] = Workspace.DescendantAdded:Connect(tryXray)
     end
 
     local function xr_disable()
-        if not XR.enabled then return end
+        if not XR.enabled then
+            return
+        end
         XR.enabled = false
 
-        -- disconnect hooks
-        for _,c in ipairs(XR.conns) do
-            pcall(function() c:Disconnect() end)
+        for _, conn in ipairs(XR.conns) do
+            pcall(function()
+                conn:Disconnect()
+            end)
         end
-        table.clear(XR.conns)
+        clearTable(XR.conns)
 
-        -- restore transparency
         clearXray()
     end
 
-    local function xr_set(v)
-        if not BOOT.ready then return end
-        if v then xr_enable() else xr_disable() end
+    local function xr_set(value)
+        if not BOOT.ready then
+            return
+        end
+        if value then
+            xr_enable()
+        else
+            xr_disable()
+        end
     end
 
-
     --------------------------------------------------------
-    -- Camera Zoom Lock
+    -- Camera zoom lock
     --------------------------------------------------------
     local ZOOM = {
-        target    = (LocalPlayer and LocalPlayer.CameraMaxZoomDistance) or 128,
+        target = (LocalPlayer and LocalPlayer.CameraMaxZoomDistance) or 128,
         guardConn = nil,
     }
 
-    local function applyZoom(v)
-        if not BOOT.ready then return end
+    local function applyZoom(value, force)
+        local newTarget = math.clamp(value or ZOOM.target, 6, 2000)
+        ZOOM.target = newTarget
 
-        ZOOM.target = math.clamp(v or ZOOM.target, 6, 2000)
-        if not LocalPlayer then return end
+        if not (force or BOOT.ready) then
+            return
+        end
 
-        -- Force Classic so the server can't lock first-person
+        if not LocalPlayer then
+            return
+        end
+
         if LocalPlayer.CameraMode == Enum.CameraMode.LockFirstPerson then
             LocalPlayer.CameraMode = Enum.CameraMode.Classic
         end
@@ -719,7 +734,9 @@ return function(Tab, Aurexis, Window, ctx)
 
     if not ZOOM.guardConn then
         ZOOM.guardConn = RunService.Stepped:Connect(function()
-            if not LocalPlayer then return end
+            if not LocalPlayer then
+                return
+            end
             if LocalPlayer.CameraMaxZoomDistance ~= ZOOM.target then
                 LocalPlayer.CameraMaxZoomDistance = ZOOM.target
             end
@@ -727,129 +744,126 @@ return function(Tab, Aurexis, Window, ctx)
     end
 
     LocalPlayer.CharacterAdded:Connect(function()
-        task.defer(applyZoom, ZOOM.target)
+        task.defer(function()
+            applyZoom(ZOOM.target, true)
+        end)
     end)
 
-
     ------------------------------------------------------------
-    -- == UI CREATION ==
-    -- We build two main sections:
-    --   1) ESP / Player Overlays
-    --   2) Graphics / Lighting / Camera
-    --
-    -- NOTE: Adjust CreateToggle/CreateSlider param names if needed
-    -- to match your exact Aurexis API.
+    -- UI: ESP section
     ------------------------------------------------------------
-
-    ----------------------------------------------------------------
-    -- ESP SECTION
-    ----------------------------------------------------------------
-    Tab:CreateSection("Visuals & Graphics  •  ESP Overlay")
+    Tab:CreateSection("Visuals & Graphics - ESP Overlay")
 
     Tab:CreateToggle({
         Name = "Highlight Friends",
-        Flag = "esp_friend",
         CurrentValue = STATE.showFriendESP,
-        Callback = function(v) STATE.showFriendESP = v end
-    })
+        Callback = function(value)
+            STATE.showFriendESP = value
+        end,
+    }, "esp_friend")
 
     Tab:CreateToggle({
         Name = "Highlight Enemies",
-        Flag = "esp_enemy",
         CurrentValue = STATE.showEnemyESP,
-        Callback = function(v) STATE.showEnemyESP = v end
-    })
+        Callback = function(value)
+            STATE.showEnemyESP = value
+        end,
+    }, "esp_enemy")
 
     Tab:CreateToggle({
         Name = "Show Neutral Players",
-        Flag = "esp_neutral",
         CurrentValue = STATE.showNeutralESP,
-        Callback = function(v) STATE.showNeutralESP = v end
-    })
+        Callback = function(value)
+            STATE.showNeutralESP = value
+        end,
+    }, "esp_neutral")
 
     if SHOW_SELF_POLICY == "toggle" then
         Tab:CreateToggle({
             Name = "Show Self ESP",
-            Flag = "esp_self",
             CurrentValue = STATE.showSelf,
-            Callback = function(v) STATE.showSelf = v end
-        })
+            Callback = function(value)
+                STATE.showSelf = value
+            end,
+        }, "esp_self")
     end
 
     Tab:CreateSlider({
-        Name = "Render Range",
+        Name = "Render Range (studs)",
         Range = {50, 2500},
         Increment = 10,
-        Suffix = "studs",
         CurrentValue = STATE.maxDistance,
-        Flag = "esp_range",
-        Callback = function(v) STATE.maxDistance = v end
-    })
+        Callback = function(value)
+            STATE.maxDistance = value
+        end,
+    }, "esp_range")
 
     Tab:CreateSection("ESP Details")
 
     Tab:CreateToggle({
         Name = "Show Display Name",
-        Flag = "esp_dispname",
         CurrentValue = STATE.showDisplayName,
-        Callback = function(v) STATE.showDisplayName = v end
-    })
+        Callback = function(value)
+            STATE.showDisplayName = value
+        end,
+    }, "esp_dispname")
 
     Tab:CreateToggle({
         Name = "Show @Username",
-        Flag = "esp_username",
         CurrentValue = STATE.showUsername,
-        Callback = function(v) STATE.showUsername = v end
-    })
+        Callback = function(value)
+            STATE.showUsername = value
+        end,
+    }, "esp_username")
 
     Tab:CreateToggle({
         Name = "Show Equipped Tool",
-        Flag = "esp_equipped",
         CurrentValue = STATE.showEquipped,
-        Callback = function(v) STATE.showEquipped = v end
-    })
+        Callback = function(value)
+            STATE.showEquipped = value
+        end,
+    }, "esp_equipped")
 
     Tab:CreateToggle({
         Name = "Show Distance",
-        Flag = "esp_distance",
         CurrentValue = STATE.showDistance,
-        Callback = function(v) STATE.showDistance = v end
-    })
+        Callback = function(value)
+            STATE.showDistance = value
+        end,
+    }, "esp_distance")
 
     Tab:CreateToggle({
         Name = "Show Skeleton (Bones)",
-        Flag = "esp_bones",
         CurrentValue = STATE.showBones,
-        Callback = function(v) STATE.showBones = v end
-    })
+        Callback = function(value)
+            STATE.showBones = value
+        end,
+    }, "esp_bones")
 
     Tab:CreateLabel({
-        Name = "Friend = Roblox friend of your account. Enemy = different team."
+        Text = "Friends = Roblox friends of your account. Enemies = players on other teams.",
     })
 
-
-    ----------------------------------------------------------------
-    -- GRAPHICS SECTION
-    ----------------------------------------------------------------
-    Tab:CreateSection("Visuals & Graphics  •  World / Lighting")
+    ------------------------------------------------------------
+    -- UI: Graphics section
+    ------------------------------------------------------------
+    Tab:CreateSection("Visuals & Graphics - World")
 
     Tab:CreateToggle({
         Name = "Fullbright",
-        Flag = "gfx_fullbright",
         CurrentValue = false,
-        Callback = function(v)
-            fb_set(v)
-        end
-    })
+        Callback = function(value)
+            fb_set(value)
+        end,
+    }, "gfx_fullbright")
 
     Tab:CreateToggle({
-        Name = "X-Ray (world 50% transparent)",
-        Flag = "gfx_xray",
+        Name = "X-Ray (world transparency)",
         CurrentValue = false,
-        Callback = function(v)
-            xr_set(v)
-        end
-    })
+        Callback = function(value)
+            xr_set(value)
+        end,
+    }, "gfx_xray")
 
     Tab:CreateSection("Camera")
 
@@ -857,42 +871,40 @@ return function(Tab, Aurexis, Window, ctx)
         Name = "Max Zoom Distance",
         Range = {6, 2000},
         Increment = 10,
-        Suffix = "studs",
         CurrentValue = ZOOM.target,
-        Flag = "gfx_zoom_max",
-        Callback = function(v)
-            applyZoom(v)
+        Callback = function(value)
+            applyZoom(value)
+        end,
+    }, "gfx_zoom_max")
+
+    ------------------------------------------------------------
+    -- Bootstrap saved flags
+    ------------------------------------------------------------
+    local function readSavedFlag(flagName, defaultValue)
+        local container = (Aurexis and (Aurexis.Flags or Aurexis.Options)) or nil
+        local flag = container and container[flagName]
+        if type(flag) == "table" then
+            if flag.CurrentValue ~= nil then
+                return flag.CurrentValue
+            end
+            if flag.Value ~= nil then
+                return flag.Value
+            end
         end
-    })
+        return defaultValue
+    end
 
-
-    ------------------------------------------------------------
-    -- == BOOTSTRAP SYNC ==
-    -- We wait one short frame so Aurexis Flags exist,
-    -- then we read them and apply graphics state once, THEN unlock BOOT.ready.
-    ------------------------------------------------------------
     task.spawn(function()
         task.wait(0.05)
-        task.wait() -- yields one frame; allows Flag table to populate in most UIs
+        task.wait()
 
-        -- read back saved flags (if Aurexis persists them)
-        local fullbrightFlag  = (Aurexis and Aurexis.Flags and Aurexis.Flags["gfx_fullbright"])
-            and Aurexis.Flags["gfx_fullbright"].Value
-            or false
+        local fullbrightFlag = readSavedFlag("gfx_fullbright", false)
+        local xrayFlag = readSavedFlag("gfx_xray", false)
+        local zoomFlag = readSavedFlag("gfx_zoom_max", ZOOM.target)
 
-        local xrayFlag        = (Aurexis and Aurexis.Flags and Aurexis.Flags["gfx_xray"])
-            and Aurexis.Flags["gfx_xray"].Value
-            or false
-
-        local zoomFlag        = (Aurexis and Aurexis.Flags and Aurexis.Flags["gfx_zoom_max"])
-            and Aurexis.Flags["gfx_zoom_max"].Value
-            or ZOOM.target
-
-        -- apply camera zoom first
         ZOOM.target = zoomFlag
-        applyZoom(zoomFlag)
+        applyZoom(zoomFlag, true)
 
-        -- apply visuals states
         if fullbrightFlag then
             fb_enable()
         else
