@@ -43,7 +43,7 @@ local TABS = {
     UniversalScripts = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/UniversalScripts.lua",
     CurrentGame      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/game-loader.lua",
     ManagerCfg       = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua",
-    HubSettings      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubSettings.lua",
+--    HubSettings      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubSettings.lua",
     Utility          = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Utility.lua"
 }
 
@@ -93,7 +93,7 @@ Window:CreateHomeTab()
 attachTab("FE Scripts",     TABS.FEScripts,            "insert_emoticon")
 attachTab("Universal Scripts",  TABS.UniversalScripts, "admin_panel_settings") 
 --attachTab("Developer",      TABS.Developer,            "extension")
-attachTab("HubSettings",    TABS.HubSettings,          "settings")
+--attachTab("HubSettings",    TABS.HubSettings,          "settings")
 
 -- Dynamisches Icon je nach Support
 local currentIcon = preCtx and "data_usage" or "_error_outline"
