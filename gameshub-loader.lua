@@ -44,7 +44,7 @@ local TABS = {
     CurrentGame      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/game-loader.lua",
     ManagerCfg       = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua",
 --    HubSettings      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubSettings.lua",
-    Utility          = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Utility.lua"
+    VisualsGraphics = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/visuals_and_graphics.lua",
 }
 
 -- 4) Helpers (no cachebusters on raw)
@@ -92,6 +92,7 @@ Window:CreateHomeTab()
 -- 7) Create tabs (now they'll appear already titled & populated)
 attachTab("FE Scripts",     TABS.FEScripts,            "insert_emoticon")
 attachTab("Universal Scripts",  TABS.UniversalScripts, "admin_panel_settings") 
+attachTab("Visuals & Graphics",    TABS.VisualsGraphics, "settings")
 --attachTab("Developer",      TABS.Developer,            "extension")
 --attachTab("HubSettings",    TABS.HubSettings,          "settings")
 
