@@ -49,7 +49,10 @@ return function(Tab, Aurexis, Window, ctx)
     ----------------------------------------------------------------
 
     local scripts = {
-        { name = "Unnamed", url = "https://raw.githubusercontent.com/TheHunterSolo1/Scripts/refs/heads/main/Protected_2809220311826785.lua.txt" },
+        { name = "Astral",        url = "https://astral.gay/loader.luau" },
+        { name = "Sensation v2",  url = "https://api.luarmor.net/files/v4/loaders/730854e5b6499ee91deb1080e8e12ae3.lua", description = "Best Keyless Script" },
+        { name = "Blackking Hub", url = "https://raw.githubusercontent.com/KINGHUB01/BlackKing/main/BlackKing" },
+        { name = "NullFire",      url = "https://raw.githubusercontent.com/NuIlFire/NullFire/main/Games/Doors.lua" },
         -- example of raw code (rare): { name="Inline Demo", raw='print("hi")', isRaw=true }
     }
     
