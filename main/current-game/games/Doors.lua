@@ -1,4 +1,4 @@
--- current-game/games/Steal a Brainrot.lua
+-- current-game/games/Doors.lua
 return function(Tab, Aurexis, Window, ctx)
 
     local function addScript(displayName, source, opts)
