@@ -49,7 +49,7 @@ return function(Tab, Aurexis, Window, ctx)
     ----------------------------------------------------------------
 
     local scripts = {
-        { name = "Astral",        url = "https://astral.gay/loader.luau" description = "DONT WORK WITH: Solara" },
+        { name = "Astral",        url = "https://astral.gay/loader.luau", description = "DONT WORK WITH: Solara" },
         { name = "Sensation v2",  url = "https://api.luarmor.net/files/v4/loaders/730854e5b6499ee91deb1080e8e12ae3.lua" },
         { name = "Blackking Hub", url = "https://raw.githubusercontent.com/KINGHUB01/BlackKing/main/BlackKing" },
         { name = "NullFire",      url = "https://raw.githubusercontent.com/NuIlFire/NullFire/main/Games/Doors.lua" },
