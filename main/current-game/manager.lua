@@ -35,7 +35,7 @@ return {
 
         [6516141723] = { -- DOORS PlaceID
              name   = "DOORS",
-             module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/3008.lua",
+             module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/Doors.lua",
          },
     },
 }
