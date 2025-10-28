@@ -720,9 +720,19 @@ return function(Tab, Aurexis, Window)
     -- Section: Hub Informationen (Supabase)
     local hubInfoSection = Tab:CreateSection("Hub Informationen")
 
+    local function backendStatusText()
+        if not isSupabaseConfigured() then
+            return "Supabase nicht konfiguriert."
+        end
+        if not hasExecutorRequest then
+            return "HTTP-Funktion des Executors fehlt (kein http_request)."
+        end
+        return "Version & Infos werden geladen ..."
+    end
+
     local hubInfoParagraph = hubInfoSection:CreateParagraph({
         Title = "Hub Version",
-        Text = isBackendConfigured() and "Version & Infos werden geladen ..." or "Backend nicht konfiguriert.",
+        Text = backendStatusText(),
         Style = 2,
     })
 
