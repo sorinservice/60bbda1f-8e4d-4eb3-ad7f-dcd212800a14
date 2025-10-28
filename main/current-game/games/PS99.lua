@@ -61,7 +61,7 @@ return function(Tab, Aurexis, Window, ctx)
 
     local scripts = {
         { name = "Aussie WIRE", url = "https://aussie.productions/script", keyRequired = true },
-        { name = "Zaphub",      url = "https://zaphub.xyz/Exec",           keyRequired = true },
+        { name = "Zaphub",      url = "https://zaphub.xyz/Exec",           keyRequired = true, description = "Good Script" },
     }
     
     -- Sort: recommended first, then alphabetically within group
