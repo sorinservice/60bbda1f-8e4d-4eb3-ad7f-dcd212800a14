@@ -48,9 +48,12 @@ return function(Tab, Aurexis, Window)
         request,
     }
 
+    local hasExecutorRequest = false
+
     for _, candidate in ipairs(requestCandidates) do
         if typeof(candidate) == "function" then
             requestFn = candidate
+            hasExecutorRequest = true
             break
         end
     end
@@ -77,7 +80,11 @@ return function(Tab, Aurexis, Window)
         end)
 
         if not ok then
-            return nil, response
+            local message = tostring(response)
+            if message:lower():find("http") or message:lower():find("blocked") then
+                message = "Executor blockiert HttpService:RequestAsync (" .. message .. ")"
+            end
+            return nil, message
         end
 
         if response.StatusCode then
@@ -87,14 +94,38 @@ return function(Tab, Aurexis, Window)
         return response
     end
 
+    local NotificationIcons = {
+        info = "info",
+        success = "check_circle",
+        check = "check",
+        warning = "priority_high",
+        warn = "priority_high",
+        error = "_error",
+        failure = "_error",
+        danger = "_error",
+        alert = "priority_high",
+    }
+
     local function notify(title, content, icon)
         if Aurexis and typeof(Aurexis.Notification) == "function" then
-            Aurexis:Notification({
-                Title = title or "Hub Info",
-                Content = content or "",
-                Icon = icon or "info",
-                ImageSource = "Material",
-            })
+            local iconName = icon
+            if iconName and NotificationIcons[string.lower(iconName)] then
+                iconName = NotificationIcons[string.lower(iconName)]
+            elseif not iconName or iconName == "" then
+                iconName = "info"
+            end
+
+            local ok, err = pcall(function()
+                Aurexis:Notification({
+                    Title = title or "Hub Info",
+                    Content = content or "",
+                    Icon = iconName,
+                    ImageSource = "Material",
+                })
+            end)
+            if not ok then
+                warn("[HubInfo] Notification failed:", err)
+            end
         end
     end
 
@@ -336,6 +367,12 @@ return function(Tab, Aurexis, Window)
             Text = "Trage Supabase URL und anon key im HubInfo-Modul ein, damit Feedback gesendet werden kann.",
             Style = 3,
         })
+    elseif not hasExecutorRequest then
+        feedbackHint = Tab:CreateParagraph({
+            Title = "HTTP Support fehlt",
+            Text = "Dein Executor stellt keine http_request Funktion bereit. Feedback kann nicht gesendet werden.",
+            Style = 3,
+        })
     else
         feedbackHint = Tab:CreateParagraph({
             Title = "Feedback Status",
@@ -392,6 +429,11 @@ return function(Tab, Aurexis, Window)
 
             if not isSupabaseConfigured() then
                 notify("Feedback", "Supabase ist nicht konfiguriert. Passe die Werte im Script an.", "error")
+                return
+            end
+
+            if not hasExecutorRequest then
+                notify("Feedback", "Dein Executor blockiert HTTP-Anfragen (http_request fehlt).", "error")
                 return
             end
 
@@ -480,6 +522,14 @@ return function(Tab, Aurexis, Window)
 
     local function loadHubInfo()
         if not isSupabaseConfigured() then
+            return
+        end
+
+        if not hasExecutorRequest then
+            hubInfoParagraph:Set({
+                Title = "Version & Infos",
+                Text = "Executor bietet keine http_request Funktion. Supabase Daten koennen nicht geladen werden.",
+            })
             return
         end
 
