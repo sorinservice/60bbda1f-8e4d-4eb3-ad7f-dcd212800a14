@@ -11,8 +11,8 @@ end
 
 -- 2) Build window (we'll briefly hide it while we preload)
 local Window = Aurexis:CreateWindow({
-    Name = "SorinHub Pre-Release",
-    Subtitle = "SorinSoftwares",
+    Name = "SorinHub Script Library",
+    Subtitle = "SorinSoftware Services",
     LoadingEnabled = true,
     ConfigSettings = { RootFolder = nil, 
     ConfigFolder = "SorinHubConfig" },
@@ -38,13 +38,12 @@ Aurexis:Notification({ Title="SorinHub", Icon="sparkle", ImageSource="Material",
 
 -- 3) Remote modules
 local TABS = {
---    Developer        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Developer.lua",
     FEScripts        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/FE-Scripts.lua",
     UniversalScripts = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/UniversalScripts.lua",
     CurrentGame      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/game-loader.lua",
     ManagerCfg       = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua",
---    HubSettings      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubSettings.lua",
-    VisualsGraphics = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/visuals_and_graphics.lua",
+    VisualsGraphics  = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/visuals_and_graphics.lua",
+    HubInfo          = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubInfo.lua",
 }
 
 -- 4) Helpers (no cachebusters on raw)
@@ -90,11 +89,10 @@ end
 Window:CreateHomeTab()
 
 -- 7) Create tabs (now they'll appear already titled & populated)
-attachTab("FE Scripts",     TABS.FEScripts,            "insert_emoticon")
+attachTab("FE Scripts",         TABS.FEScripts,        "insert_emoticon")
 attachTab("Universal Scripts",  TABS.UniversalScripts, "admin_panel_settings") 
-attachTab("Visuals & Graphics",    TABS.VisualsGraphics, "settings")
---attachTab("Developer",      TABS.Developer,            "extension")
---attachTab("HubSettings",    TABS.HubSettings,          "settings")
+attachTab("Visuals & Graphics", TABS.VisualsGraphics,  "settings")
+attachTab("Hub Info",           TABS.HubInfo,          "info")
 
 -- Dynamisches Icon je nach Support
 local currentIcon = preCtx and "data_usage" or "_error_outline"
