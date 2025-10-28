@@ -26,11 +26,16 @@ return {
         [96342491571673] = { -- Steal a Brainrot PlaceID
              name   = "Steal a Brainrot",
              module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/Steal%20a%20Brainrot.lua",
-         },
-
+         }, 
+        
         [2768379856] = { -- 3008 [2.73] PlaceID
              name   = "3008 [2.73]",
              module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/3008.lua",
+         }, 
+        
+        [8737899170] = { -- PetSim 99 PlaceID
+             name   = "Pet Simulator 99",
+             module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/PS99.lua",
          },
 
         [6516141723] = { -- DOORS PlaceID
