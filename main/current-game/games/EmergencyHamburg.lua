@@ -6,10 +6,20 @@ return function(Tab, Aurexis, Window, ctx)
 
         local title = displayName
         if opts.subtext and #opts.subtext > 0 then
-            title = title .. " - " .. opts.subtext
+            title = title .. " — " .. opts.subtext
         end
+
+        -- Beschreibung zusammensetzen
         if opts.recommended and not opts.description then
-            opts.description = " Most Recommended by Sorin"
+            opts.description = "✓ Recommended by Sorin"
+        end
+
+        if opts.keyRequired then
+            if opts.description then
+                opts.description = opts.description .. " 🔑 Has a Key System"
+            else
+                opts.description = "🔑 Has a Key System"
+            end
         end
 
         Tab:CreateButton({
@@ -104,6 +114,7 @@ return function(Tab, Aurexis, Window, ctx)
                 subtext     = s.subtext,
                 description = s.description,
                 recommended = s.recommended,
+                keyRequired = s.keyRequired,
                 raw         = (s.raw ~= nil)
             }
         )
