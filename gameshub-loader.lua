@@ -34,7 +34,7 @@ try(function() Window:SetVisible(false) end)
 try(function() Window:SetMinimized(true) end)
 
 -- Quick notify (will show once visible)
-Aurexis:Notification({ Title="SorinHub", Icon="sparkle", ImageSource="Material", Content="UI initialized successfully." })
+Aurexis:Notification({ Title="Greetings from SorinHub", Icon="emoji_emotions", ImageSource="Material", Content="Have a nice day :D" })
 
 -- 3) Remote modules
 local TABS = {
