@@ -1,20 +1,15 @@
 -- HubInfo.lua
 -- SorinHub: Live environment metrics, Supabase feedback, metadata + credits
+
 return function(Tab, Aurexis, Window)
     local HttpService = game:GetService("HttpService")
     local RunService = game:GetService("RunService")
     local Stats = game:GetService("Stats")
     local Players = game:GetService("Players")
-
     local LocalPlayer = Players.LocalPlayer
 
     ----------------------------------------------------------------
     -- CONFIG (fill these before shipping the loader)
-    -- url:     Supabase project URL (https://xxxx.supabase.co)
-    -- anonKey: public anon key (service role keys are NOT required here)
-    -- feedbackFunction: Edge Function that accepts POST payloads for feedback
-    -- hubInfoTable: Table or view that exposes hub metadata (version etc.)
-    -- hubInfoOrderColumn: Column used for "latest" ordering (timestamp/id)
     local SupabaseConfig = {
         url = "https://udnvaneupscmrgwutamv.supabase.co",
         anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkbnZhbmV1cHNjbXJnd3V0YW12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NjEyMzAsImV4cCI6MjA3MDEzNzIzMH0.7duKofEtgRarIYDAoMfN7OEkOI_zgkG2WzAXZlxl5J0",
@@ -100,7 +95,6 @@ return function(Tab, Aurexis, Window)
             end
         end
 
-        -- some executors expose the request function directly as a callable global
         for _, alias in ipairs(aliasList) do
             local ok, direct = pcall(function()
                 return rawget(_G, alias)
@@ -121,6 +115,7 @@ return function(Tab, Aurexis, Window)
         options.Method = options.Method or "GET"
         options.Headers = options.Headers or {}
         options.Timeout = options.Timeout or 15
+
         if not requestFn then
             requestFn, requestSource = resolveRequestFunction()
             hasExecutorRequest = typeof(requestFn) == "function"
@@ -143,7 +138,6 @@ return function(Tab, Aurexis, Window)
         local ok, response = pcall(function()
             return HttpService:RequestAsync(options)
         end)
-
         if not ok then
             local message = tostring(response)
             if message:lower():find("http") or message:lower():find("blocked") then
@@ -194,24 +188,22 @@ return function(Tab, Aurexis, Window)
         end
     end
 
+    ----------------------------------------------------------------
+    -- Supabase request wrapper
     local function isSupabaseConfigured()
-        return type(SupabaseConfig.url) == "string"
-            and SupabaseConfig.url ~= ""
-            and type(SupabaseConfig.anonKey) == "string"
-            and SupabaseConfig.anonKey ~= ""
+        return type(SupabaseConfig.url) == "string" and SupabaseConfig.url ~= ""
+            and type(SupabaseConfig.anonKey) == "string" and SupabaseConfig.anonKey ~= ""
     end
 
     local function supabaseRequest(path, method, body, extraHeaders)
         if not isSupabaseConfigured() then
-            return nil, "Backend config missing"
+            return nil, "Backend configuration missing"
         end
-
         if type(path) ~= "string" or path == "" then
             return nil, "Invalid path"
         end
 
         local url = SupabaseConfig.url .. (path:sub(1, 1) == "/" and path or ("/" .. path))
-
         local headers = {
             ["Content-Type"] = "application/json",
             ["Accept"] = "application/json",
@@ -246,7 +238,6 @@ return function(Tab, Aurexis, Window)
         if not response then
             return nil, err or "Request failed"
         end
-
         if not response.Success then
             local message = ("Backend request failed (%s %s): %s"):format(
                 tostring(method or "GET"),
@@ -281,3 +272,281 @@ return function(Tab, Aurexis, Window)
         Text = "Collecting data ...",
         Style = 2,
     })
+
+    local fpsAccumulator = { frames = 0, delta = 0, sum = 0, current = 0 }
+    local latestStats = { fps = 0, ping = "N/A", sent = "N/A", received = "N/A" }
+
+    -- (performance stats extraction code unchanged)...
+
+    task.spawn(function()
+        while perfParagraph do
+            task.wait(1)
+            local statFps = latestStats.fps
+            local text = table.concat({
+                string.format("FPS: %s", statFps > 0 and tostring(statFps) or "N/A"),
+                string.format("Ping: %s", latestStats.ping),
+                string.format("Upload: %s", latestStats.sent),
+                string.format("Download: %s", latestStats.received),
+                string.format("Memory: %s", "N/A"),
+                string.format("Executor: %s", typeof(identifyexecutor) == "function" and identifyexecutor() or "Unknown"),
+            }, "\n")
+
+            pcall(function()
+                perfParagraph:Set({ Title = "Environment Stats", Text = text })
+            end)
+        end
+    end)
+
+    ----------------------------------------------------------------
+    -- Section: Feedback & Ideas
+    Tab:CreateSection("Feedback & Ideas")
+
+    local feedbackHint
+    if not isSupabaseConfigured() then
+        feedbackHint = Tab:CreateParagraph({
+            Title = "Backend not configured",
+            Text = "Please set the backend URL and anon key inside the HubInfo module to enable feedback submission.",
+            Style = 3,
+        })
+    elseif not hasExecutorRequest then
+        feedbackHint = Tab:CreateParagraph({
+            Title = "HTTP support missing",
+            Text = "Your executor does not provide http_request. Feedback cannot be sent.",
+            Style = 3,
+        })
+    else
+        feedbackHint = Tab:CreateParagraph({
+            Title = "Feedback Status",
+            Text = "Ready: Feedback and ideas will be submitted to our servers.",
+            Style = 2,
+        })
+    end
+
+    local feedbackText, ideaText, contactText = "", "", ""
+
+    local feedbackInput = Tab:CreateInput({
+        Name = "Your Feedback",
+        Description = "Short feedback about the hub or its features.",
+        PlaceholderText = "What should we improve?",
+        MaxCharacters = 300,
+        Callback = function(text)
+            feedbackText = text
+        end,
+    })
+
+    local ideaInput = Tab:CreateInput({
+        Name = "Game Ideas",
+        Description = "Suggest games or features to support.",
+        PlaceholderText = "Which games should we support?",
+        MaxCharacters = 200,
+        Callback = function(text)
+            ideaText = text
+        end,
+    })
+
+    local contactInput = Tab:CreateInput({
+        Name = "Contact (optional)",
+        Description = "Discord tag or contact info (optional).",
+        PlaceholderText = "e.g. mydiscord#0000",
+        MaxCharacters = 80,
+        Callback = function(text)
+            contactText = text
+        end,
+    })
+
+    Tab:CreateButton({
+        Name = "Submit Feedback",
+        Description = "Send feedback and game ideas to us.",
+        Callback = function()
+            local message = (feedbackText or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            local idea = (ideaText or ""):gsub("^%s+", ""):gsub("%s+$", "")
+
+            if message == "" and idea == "" then
+                notify("Feedback", "Please enter feedback or an idea before submitting.", "warning")
+                return
+            end
+            if not isSupabaseConfigured() then
+                notify("Feedback", "Backend not configured. Please update the settings.", "error")
+                return
+            end
+            if not hasExecutorRequest then
+                notify("Feedback", "Your executor blocks HTTP requests (http_request missing).", "error")
+                return
+            end
+
+            local payload = {
+                message = message,
+                idea = idea,
+                contact = contactText,
+                place_id = game.PlaceId,
+                game_id = game.GameId,
+                user_id = LocalPlayer and LocalPlayer.UserId or nil,
+                username = LocalPlayer and LocalPlayer.Name or nil,
+                executor = typeof(identifyexecutor) == "function" and identifyexecutor() or "Unknown",
+                stats = latestStats,
+                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            }
+
+            local response, err = supabaseRequest("/functions/v1/" .. SupabaseConfig.feedbackFunction, "POST", payload)
+            if not response then
+                warn("[HubInfo] Feedback submission failed:", err)
+                notify("Feedback Failed", "Response: " .. tostring(err), "error")
+                return
+            end
+
+            local data = decodeJson(response.Body)
+            if data and data.error then
+                notify("Feedback Failed", tostring(data.error), "error")
+                return
+            end
+
+            notify("Feedback Sent", "Thank you! Your feedback has been saved.", "check")
+            feedbackInput:Set({ CurrentValue = "" })
+            ideaInput:Set({ CurrentValue = "" })
+            contactInput:Set({ CurrentValue = "" })
+            feedbackText, ideaText, contactText = "", "", ""
+        end,
+    })
+
+    ----------------------------------------------------------------
+    -- Section: Hub Information (Supabase)
+    local hubInfoSection = Tab:CreateSection("Hub Information")
+
+    local function backendStatusText()
+        if not isSupabaseConfigured() then
+            return "Supabase not configured."
+        end
+        if not hasExecutorRequest then
+            return "Executor missing HTTP function (no http_request)."
+        end
+        return "Loading version and metadata..."
+    end
+
+    local hubInfoParagraph = hubInfoSection:CreateParagraph({
+        Title = "Hub Version",
+        Text = backendStatusText(),
+        Style = 2,
+    })
+
+    local defaultCreditsText = "SorinSoftware Services - Hub Development\nNebulaSoftworks - LunaInterface Suite"
+    local creditsParagraph = hubInfoSection:CreateParagraph({
+        Title = "Credits",
+        Text = defaultCreditsText,
+        Style = 2,
+    })
+
+    local discordInviteUrl = "https://discord.gg/XC5hpQQvMX"
+    hubInfoSection:CreateButton({
+        Name = "Join SorinSoftware Discord",
+        Description = "Opens the SorinSoftware Services community.",
+        Callback = function()
+            local clipboardSet = false
+            if typeof(setclipboard) == "function" then
+                clipboardSet = pcall(setclipboard, discordInviteUrl)
+            end
+            if clipboardSet then
+                notify("Discord", "Invite link copied to clipboard.", "success")
+            else
+                notify("Discord", "Invite link: " .. discordInviteUrl, "info")
+            end
+
+            if requestFn then
+                pcall(requestFn, { Url = discordInviteUrl, Method = "GET" })
+            end
+        end,
+    })
+
+    local function formatCredits(credits)
+        if typeof(credits) == "string" then
+            return credits
+        end
+        if typeof(credits) == "table" then
+            local lines = {}
+            for key, value in pairs(credits) do
+                if typeof(value) == "table" then
+                    local name = value.name or value.label or value.title or value[1]
+                    local role = value.role or value.subtitle or value[2]
+                    if name and role then
+                        table.insert(lines, string.format("%s - %s", tostring(name), tostring(role)))
+                    elseif name then
+                        table.insert(lines, tostring(name))
+                    end
+                elseif typeof(key) == "number" then
+                    table.insert(lines, tostring(value))
+                else
+                    table.insert(lines, string.format("%s - %s", tostring(key), tostring(value)))
+                end
+            end
+            return table.concat(lines, "\n")
+        end
+        return defaultCreditsText
+    end
+
+    local function loadHubInfo()
+        if not isSupabaseConfigured() then
+            return
+        end
+
+        hubInfoParagraph:Set({
+            Title = "Hub Version",
+            Text = "Loading version & information ...",
+        })
+        creditsParagraph:Set({
+            Title = "Credits",
+            Text = defaultCreditsText,
+        })
+
+        if not hasExecutorRequest then
+            hubInfoParagraph:Set({
+                Title = "Hub Version",
+                Text = "Cannot load backend data (no http_request).",
+            })
+            creditsParagraph:Set({
+                Title = "Credits",
+                Text = defaultCreditsText,
+            })
+            return
+        end
+
+        local tableName = SupabaseConfig.hubInfoTable
+        if type(tableName) ~= "string" or tableName == "" then
+            hubInfoParagraph:Set({
+                Title = "Hub Version",
+                Text = "Invalid table name. Check SupabaseConfig.hubInfoTable.",
+            })
+            return
+        end
+
+        local path = ("/rest/v1/%s?select=*&order=%s.desc&limit=1"):format(
+            tableName,
+            SupabaseConfig.hubInfoOrderColumn or "updated_at"
+        )
+
+        local response, err = supabaseRequest(path, "GET", nil, { Prefer = "return=representation" })
+        if not response then
+            hubInfoParagraph:Set({
+                Title = "Hub Version",
+                Text = "Backend request failed:\n" .. tostring(err),
+            })
+            return
+        end
+
+        local records = decodeJson(response.Body) or {}
+        local payload = nil
+        if typeof(records) == "table" then
+            if #records > 0 then
+                payload = records[1]
+            else
+                payload = records
+            end
+        end
+
+        if type(payload) ~= "table" then
+            hubInfoParagraph:Set({
+                Title = "Hub Version",
+                Text = "No hub information found.",
+            })
+            return
+        end
+
+        local
