@@ -601,8 +601,8 @@ return function(Tab, Aurexis, Window)
     local feedbackHint
     if not isSupabaseConfigured() then
         feedbackHint = Tab:CreateParagraph({
-            Title = "Supabase nicht konfiguriert",
-            Text = "Trage Supabase URL und anon key im HubInfo-Modul ein, damit Feedback gesendet werden kann.",
+            Title = "Backend nicht konfiguriert",
+            Text = "Backend Informationen sind nicht hinterlegt.",
             Style = 3,
         })
     elseif not hasExecutorRequest then
@@ -614,7 +614,7 @@ return function(Tab, Aurexis, Window)
     else
         feedbackHint = Tab:CreateParagraph({
             Title = "Feedback Status",
-            Text = "Bereit: Eingaben werden an Supabase Edge Function weitergeleitet.",
+            Text = "Bereit: Eingaben werden an uns weitergeleitet",
             Style = 2,
         })
     end
@@ -666,7 +666,7 @@ return function(Tab, Aurexis, Window)
             end
 
             if not isSupabaseConfigured() then
-                notify("Feedback", "Supabase ist nicht konfiguriert. Passe die Werte im Script an.", "error")
+                notify("Feedback", "Das Backend ist nicht konfiguriert!", "error")
                 return
             end
 
@@ -721,7 +721,7 @@ return function(Tab, Aurexis, Window)
     local hubInfoSection = Tab:CreateSection("Hub Informationen")
 
     local hubInfoLabel = hubInfoSection:CreateLabel({
-        Text = isSupabaseConfigured() and "Version & Infos werden geladen ..." or "Supabase nicht konfiguriert.",
+        Text = isSupabaseConfigured() and "Version & Infos werden geladen ..." or "Backend nicht konfiguriert.",
         Style = 2,
     })
 
