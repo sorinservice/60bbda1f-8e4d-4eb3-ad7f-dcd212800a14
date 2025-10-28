@@ -601,8 +601,8 @@ return function(Tab, Aurexis, Window)
     local feedbackHint
     if not isSupabaseConfigured() then
         feedbackHint = Tab:CreateParagraph({
-            Title = "Backend nicht konfiguriert",
-            Text = "Backend Informationen sind nicht hinterlegt.",
+            Title = "Supabase nicht konfiguriert",
+            Text = "Trage Supabase URL und anon key im HubInfo-Modul ein, damit Feedback gesendet werden kann.",
             Style = 3,
         })
     elseif not hasExecutorRequest then
@@ -614,7 +614,7 @@ return function(Tab, Aurexis, Window)
     else
         feedbackHint = Tab:CreateParagraph({
             Title = "Feedback Status",
-            Text = "Bereit: Eingaben werden an uns weitergeleitet",
+            Text = "Bereit: Eingaben werden an Supabase Edge Function weitergeleitet.",
             Style = 2,
         })
     end
@@ -666,7 +666,7 @@ return function(Tab, Aurexis, Window)
             end
 
             if not isSupabaseConfigured() then
-                notify("Feedback", "Das Backend ist nicht konfiguriert!", "error")
+                notify("Feedback", "Supabase ist nicht konfiguriert. Passe die Werte im Script an.", "error")
                 return
             end
 
@@ -720,13 +720,15 @@ return function(Tab, Aurexis, Window)
     -- Section: Hub Informationen (Supabase)
     local hubInfoSection = Tab:CreateSection("Hub Informationen")
 
-    local hubInfoLabel = hubInfoSection:CreateLabel({
-        Text = isSupabaseConfigured() and "Version & Infos werden geladen ..." or "Backend nicht konfiguriert.",
+    local hubInfoParagraph = hubInfoSection:CreateParagraph({
+        Title = "Hub Version",
+        Text = isSupabaseConfigured() and "Version & Infos werden geladen ..." or "Supabase nicht konfiguriert.",
         Style = 2,
     })
 
-    local defaultCreditsText = "Credits:\nSorinSoftware Services - Hub Entwicklung\nNebulaSoftworks - LunaInterface Suite"
-    local creditsLabel = hubInfoSection:CreateLabel({
+    local defaultCreditsText = "SorinSoftware Services - Hub Entwicklung\nNebulaSoftworks - LunaInterface Suite"
+    local creditsParagraph = hubInfoSection:CreateParagraph({
+        Title = "Credits",
         Text = defaultCreditsText,
         Style = 2,
     })
@@ -787,18 +789,33 @@ return function(Tab, Aurexis, Window)
             return
         end
 
-        hubInfoLabel:Set("Version & Infos werden geladen ...")
-        creditsLabel:Set(defaultCreditsText)
+        hubInfoParagraph:Set({
+            Title = "Hub Version",
+            Text = "Version & Infos werden geladen ...",
+        })
+        creditsParagraph:Set({
+            Title = "Credits",
+            Text = defaultCreditsText,
+        })
 
         if not hasExecutorRequest then
-            hubInfoLabel:Set("Supabase Daten koennen nicht geladen werden (kein http_request).")
-            creditsLabel:Set(defaultCreditsText)
+            hubInfoParagraph:Set({
+                Title = "Hub Version",
+                Text = "Supabase Daten koennen nicht geladen werden (kein http_request).",
+            })
+            creditsParagraph:Set({
+                Title = "Credits",
+                Text = defaultCreditsText,
+            })
             return
         end
 
         local tableName = SupabaseConfig.hubInfoTable
         if type(tableName) ~= "string" or tableName == "" then
-            hubInfoLabel:Set("Ungueltiger Tabellenname. Pruefe SupabaseConfig.hubInfoTable.")
+            hubInfoParagraph:Set({
+                Title = "Hub Version",
+                Text = "Ungueltiger Tabellenname. Pruefe SupabaseConfig.hubInfoTable.",
+            })
             return
         end
 
@@ -812,7 +829,10 @@ return function(Tab, Aurexis, Window)
         })
 
         if not response then
-            hubInfoLabel:Set("Supabase Anfrage fehlgeschlagen:\n" .. tostring(err))
+            hubInfoParagraph:Set({
+                Title = "Hub Version",
+                Text = "Supabase Anfrage fehlgeschlagen:\n" .. tostring(err),
+            })
             return
         end
 
@@ -827,7 +847,10 @@ return function(Tab, Aurexis, Window)
         end
 
         if type(payload) ~= "table" then
-            hubInfoLabel:Set("Keine Hub Informationen gefunden.")
+            hubInfoParagraph:Set({
+                Title = "Hub Version",
+                Text = "Keine Hub Informationen gefunden.",
+            })
             return
         end
 
@@ -852,10 +875,16 @@ return function(Tab, Aurexis, Window)
             table.insert(infoLines, "Notizen: " .. tostring(extra))
         end
 
-        hubInfoLabel:Set(table.concat(infoLines, "\n"))
+        hubInfoParagraph:Set({
+            Title = "Hub Version",
+            Text = table.concat(infoLines, "\n"),
+        })
 
         if payload.credits then
-            creditsLabel:Set("Credits:\n" .. formatCredits(payload.credits))
+            creditsParagraph:Set({
+                Title = "Credits",
+                Text = formatCredits(payload.credits),
+            })
         end
     end
 
