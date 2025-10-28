@@ -203,7 +203,7 @@ return function(Tab, Aurexis, Window)
 
     local function supabaseRequest(path, method, body, extraHeaders)
         if not isSupabaseConfigured() then
-            return nil, "Supabase config missing"
+            return nil, "Backend config missing"
         end
 
         if type(path) ~= "string" or path == "" then
@@ -248,7 +248,7 @@ return function(Tab, Aurexis, Window)
         end
 
         if not response.Success then
-            local message = ("Supabase request failed (%s %s): %s"):format(
+            local message = ("Backend request failed (%s %s): %s"):format(
                 tostring(method or "GET"),
                 url,
                 tostring(response.Body or "no body")
@@ -601,8 +601,8 @@ return function(Tab, Aurexis, Window)
     local feedbackHint
     if not isSupabaseConfigured() then
         feedbackHint = Tab:CreateParagraph({
-            Title = "Supabase nicht konfiguriert",
-            Text = "Trage Supabase URL und anon key im HubInfo-Modul ein, damit Feedback gesendet werden kann.",
+            Title = "Backend nicht konfiguriert",
+            Text = "Trage Backend URL und anon key im HubInfo-Modul ein, damit Feedback gesendet werden kann.",
             Style = 3,
         })
     elseif not hasExecutorRequest then
@@ -614,7 +614,7 @@ return function(Tab, Aurexis, Window)
     else
         feedbackHint = Tab:CreateParagraph({
             Title = "Feedback Status",
-            Text = "Bereit: Eingaben werden an Supabase Edge Function weitergeleitet.",
+            Text = "Bereit: Eingaben werden an uns weitergeleitet",
             Style = 2,
         })
     end
@@ -655,7 +655,7 @@ return function(Tab, Aurexis, Window)
 
     Tab:CreateButton({
         Name = "Feedback absenden",
-        Description = "Sendet Feedback und Spielideen an Supabase.",
+        Description = "Sendet Feedback und Spielideen an uns.",
         Callback = function()
             local message = (feedbackText or ""):gsub("^%s+", ""):gsub("%s+$", "")
             local idea = (ideaText or ""):gsub("^%s+", ""):gsub("%s+$", "")
@@ -666,7 +666,7 @@ return function(Tab, Aurexis, Window)
             end
 
             if not isSupabaseConfigured() then
-                notify("Feedback", "Supabase ist nicht konfiguriert. Passe die Werte im Script an.", "error")
+                notify("Feedback", "Backend ist nicht konfiguriert. Passe die Werte an.", "error")
                 return
             end
 
@@ -722,7 +722,7 @@ return function(Tab, Aurexis, Window)
 
     local hubInfoParagraph = hubInfoSection:CreateParagraph({
         Title = "Hub Version",
-        Text = isSupabaseConfigured() and "Version & Infos werden geladen ..." or "Supabase nicht konfiguriert.",
+        Text = isBackendConfigured() and "Version & Infos werden geladen ..." or "Backend nicht konfiguriert.",
         Style = 2,
     })
 
@@ -801,7 +801,7 @@ return function(Tab, Aurexis, Window)
         if not hasExecutorRequest then
             hubInfoParagraph:Set({
                 Title = "Hub Version",
-                Text = "Supabase Daten koennen nicht geladen werden (kein http_request).",
+                Text = "Backend Daten koennen nicht geladen werden (kein http_request).",
             })
             creditsParagraph:Set({
                 Title = "Credits",
@@ -831,7 +831,7 @@ return function(Tab, Aurexis, Window)
         if not response then
             hubInfoParagraph:Set({
                 Title = "Hub Version",
-                Text = "Supabase Anfrage fehlgeschlagen:\n" .. tostring(err),
+                Text = "Backend Anfrage fehlgeschlagen:\n" .. tostring(err),
             })
             return
         end
