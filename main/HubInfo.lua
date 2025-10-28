@@ -37,35 +37,100 @@ return function(Tab, Aurexis, Window)
 
     ----------------------------------------------------------------
     -- HTTP helper (supports common exploit request implementations)
-    local requestFn = nil
-    local requestCandidates = {
-        (syn and syn.request),
-        (http and http.request),
-        http_request,
-        fluxus_request,
-        (fluxus and fluxus.request),
-        (krnl and krnl.request),
-        request,
-    }
+    local function resolveRequestFunction()
+        local envCandidates = {}
 
-    local hasExecutorRequest = false
-
-    for _, candidate in ipairs(requestCandidates) do
-        if typeof(candidate) == "function" then
-            requestFn = candidate
-            hasExecutorRequest = true
-            break
+        local function pushEnv(env)
+            if typeof(env) == "table" then
+                table.insert(envCandidates, env)
+            end
         end
+
+        local okGenv, genv = pcall(function()
+            return getgenv and getgenv()
+        end)
+        if okGenv then
+            pushEnv(genv)
+        end
+
+        pushEnv(_G)
+        pushEnv(shared)
+        pushEnv(_ENV)
+
+        local okFenv, fenv = pcall(function()
+            return getfenv and getfenv()
+        end)
+        if okFenv then
+            pushEnv(fenv)
+        end
+
+        local aliasList = {
+            "http_request",
+            "httprequest",
+            "http.request",
+            "syn.request",
+            "syn.request_async",
+            "fluxus.request",
+            "krnl.request",
+            "request",
+            "http.post",
+            "http_request_async",
+        }
+
+        local function tryResolve(scope, path)
+            local current = scope
+            for segment in string.gmatch(path, "[^%.]+") do
+                if typeof(current) ~= "table" then
+                    return nil
+                end
+                current = rawget(current, segment) or current[segment]
+            end
+            if typeof(current) == "function" then
+                return current
+            end
+            return nil
+        end
+
+        for _, env in ipairs(envCandidates) do
+            for _, alias in ipairs(aliasList) do
+                local fn = tryResolve(env, alias)
+                if typeof(fn) == "function" then
+                    return fn, alias
+                end
+            end
+        end
+
+        -- some executors expose request function directly as global userdata callable
+        for _, alias in ipairs(aliasList) do
+            local ok, direct = pcall(function()
+                return rawget(_G, alias)
+            end)
+            if ok and typeof(direct) == "function" then
+                return direct, alias
+            end
+        end
+
+        return nil
     end
+
+    local requestFn, requestSource = resolveRequestFunction()
+    local hasExecutorRequest = typeof(requestFn) == "function"
 
     local function httpRequest(options)
         options = options or {}
         options.Method = options.Method or "GET"
         options.Headers = options.Headers or {}
         options.Timeout = options.Timeout or 15
+        if not requestFn then
+            requestFn, requestSource = resolveRequestFunction()
+            hasExecutorRequest = typeof(requestFn) == "function"
+        end
 
         if requestFn then
-            local response = requestFn(options)
+            local okRequest, response = pcall(requestFn, options)
+            if not okRequest then
+                return nil, "Executor request failed (" .. tostring(requestSource or "unknown") .. "): " .. tostring(response)
+            end
             if not response then
                 return nil, "Request returned nil"
             end
