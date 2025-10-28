@@ -272,6 +272,21 @@ return function(Tab, Aurexis, Window)
         return nil
     end
 
+    local connectionLabelStyle = 2
+    local connectionLabelText = "Supabase Verbindung aktiv - Hub Infos & Feedback werden live synchronisiert."
+    if not isSupabaseConfigured() then
+        connectionLabelStyle = 3
+        connectionLabelText = "Supabase Verbindung inaktiv - Konfiguration im HubInfo-Modul fehlt."
+    elseif not hasExecutorRequest then
+        connectionLabelStyle = 3
+        connectionLabelText = "Supabase Verbindung blockiert - Dein Executor stellt keine http_request Funktion bereit."
+    end
+
+    Tab:CreateLabel({
+        Text = connectionLabelText,
+        Style = connectionLabelStyle,
+    })
+
     ----------------------------------------------------------------
     -- Section: Runtime Performance
     Tab:CreateSection("Runtime Performance")
@@ -295,22 +310,75 @@ return function(Tab, Aurexis, Window)
         received = "N/A",
     }
 
-    RunService.RenderStepped:Connect(function(dt)
-        fpsAccumulator.frames += 1
-        fpsAccumulator.delta += dt
-    end)
+    local NETWORK_STAT_ALIASES = {
+        upload = {
+            "Data Send Kbps",
+            "Data Send Rate",
+            "Data Send",
+            "Network Sent",
+            "Network Sent KBps",
+            "Total Upload",
+        },
+        download = {
+            "Data Receive Kbps",
+            "Data Receive Rate",
+            "Data Receive",
+            "Network Received",
+            "Network Received KBps",
+            "Total Download",
+        },
+    }
 
     local networkStatsContainer = nil
+    local performanceStatsContainer = nil
+
     local function resolveNetworkStats()
-        if networkStatsContainer then
+        if networkStatsContainer and networkStatsContainer.Parent then
             return
         end
+
         local ok, net = pcall(function()
-            return Stats and Stats.Network and Stats.Network.ServerStatsItem
+            if not Stats then
+                return nil
+            end
+            local network = Stats.Network
+            if not network then
+                return nil
+            end
+            if typeof(network.ServerStatsItem) == "Instance" then
+                return network.ServerStatsItem
+            end
+            if typeof(network.FindFirstChild) == "function" then
+                return network:FindFirstChild("ServerStatsItem")
+            end
+            return nil
         end)
+
         if ok and net then
             networkStatsContainer = net
         end
+    end
+
+    local function resolvePerformanceStats()
+        if performanceStatsContainer and performanceStatsContainer.Parent then
+            return
+        end
+
+        local ok, perf = pcall(function()
+            return Stats and Stats.PerformanceStats
+        end)
+
+        if ok and perf then
+            performanceStatsContainer = perf
+        end
+    end
+
+    local function extractNumeric(value)
+        if typeof(value) == "string" and value ~= "" then
+            local number = tonumber((value:gsub("[^%d%.%-]", "")))
+            return number or value
+        end
+        return value
     end
 
     local function getServerStatValue(statName)
@@ -319,10 +387,25 @@ return function(Tab, Aurexis, Window)
             return nil
         end
 
-        local ok, item = pcall(function()
+        local item = nil
+
+        local okIndex, indexResult = pcall(function()
             return networkStatsContainer[statName]
         end)
-        if not ok or not item then
+        if okIndex and indexResult then
+            item = indexResult
+        end
+
+        if not item and typeof(networkStatsContainer.FindFirstChild) == "function" then
+            local okFind, findResult = pcall(function()
+                return networkStatsContainer:FindFirstChild(statName)
+            end)
+            if okFind and findResult then
+                item = findResult
+            end
+        end
+
+        if not item then
             return nil
         end
 
@@ -336,13 +419,55 @@ return function(Tab, Aurexis, Window)
         if typeof(item.GetValueString) == "function" then
             local okString, str = pcall(item.GetValueString, item)
             if okString and typeof(str) == "string" then
-                local number = tonumber((str:gsub("[^%d%.%-]", "")))
-                return number or str
+                return extractNumeric(str)
             end
         end
 
         return nil
     end
+
+    local function getPerformanceStatValue(statName)
+        resolvePerformanceStats()
+        if not performanceStatsContainer then
+            return nil
+        end
+        if typeof(performanceStatsContainer.FindFirstChild) ~= "function" then
+            return nil
+        end
+
+        local item = performanceStatsContainer:FindFirstChild(statName)
+        if not item then
+            return nil
+        end
+
+        if typeof(item.GetValue) == "function" then
+            local okValue, value = pcall(item.GetValue, item)
+            if okValue then
+                if typeof(value) == "number" then
+                    return value
+                end
+                return extractNumeric(value)
+            end
+        end
+
+        if typeof(item.GetValueString) == "function" then
+            local okString, str = pcall(item.GetValueString, item)
+            if okString then
+                return extractNumeric(str)
+            end
+        end
+
+        if typeof(item.Value) == "number" then
+            return item.Value
+        end
+
+        return nil
+    end
+
+    RunService.RenderStepped:Connect(function(dt)
+        fpsAccumulator.frames += 1
+        fpsAccumulator.delta += dt
+    end)
 
     local function getPing()
         local value = getServerStatValue("Data Ping")
@@ -352,13 +477,34 @@ return function(Tab, Aurexis, Window)
         if typeof(value) == "string" and value ~= "" then
             return value
         end
+
+        local ok, pingSeconds = pcall(function()
+            return LocalPlayer and LocalPlayer:GetNetworkPing()
+        end)
+        if ok and typeof(pingSeconds) == "number" then
+            local ms = math.max(0, math.floor((pingSeconds * 2) / 0.01))
+            return string.format("%d ms", ms)
+        end
+
         return "N/A"
     end
 
-    local function getNetworkStat(field, unit)
-        local value = getServerStatValue(field)
+    local function getNetworkStat(aliasList, unit)
+        local value = nil
+
+        for _, name in ipairs(aliasList) do
+            value = getServerStatValue(name)
+            if value ~= nil then
+                break
+            end
+            value = getPerformanceStatValue(name)
+            if value ~= nil then
+                break
+            end
+        end
+
         if typeof(value) == "number" then
-            return string.format("%d %s", math.floor(value + 0.5), unit)
+            return string.format("%.0f %s", value, unit)
         end
         if typeof(value) == "string" and value ~= "" then
             return value
@@ -400,8 +546,8 @@ return function(Tab, Aurexis, Window)
 
             latestStats.fps = fpsAccumulator.current
             latestStats.ping = getPing()
-            latestStats.sent = getNetworkStat("Data Send Kbps", "KB/s")
-            latestStats.received = getNetworkStat("Data Receive Kbps", "KB/s")
+            latestStats.sent = getNetworkStat(NETWORK_STAT_ALIASES.upload, "KB/s")
+            latestStats.received = getNetworkStat(NETWORK_STAT_ALIASES.download, "KB/s")
 
             local text = table.concat({
                 string.format("FPS: %s", latestStats.fps > 0 and tostring(latestStats.fps) or "N/A"),
@@ -545,18 +691,43 @@ return function(Tab, Aurexis, Window)
 
     ----------------------------------------------------------------
     -- Section: Hub Informationen (Supabase)
-    Tab:CreateSection("Hub Informationen")
+    local hubInfoSection = Tab:CreateSection("Hub Informationen")
 
-    local hubInfoParagraph = Tab:CreateParagraph({
+    local hubInfoParagraph = hubInfoSection:CreateParagraph({
         Title = "Version & Infos",
         Text = isSupabaseConfigured() and "Lade Hub Informationen ..." or "Supabase nicht konfiguriert.",
         Style = 2,
     })
 
-    local creditsParagraph = Tab:CreateParagraph({
+    local creditsParagraph = hubInfoSection:CreateParagraph({
         Title = "Credits",
         Text = "NebulaSoftworks - LunaInterfaceSuite\nWyatt - Hub Erweiterungen",
         Style = 2,
+    })
+
+    local discordInviteUrl = "https://discord.gg/XC5hpQQvMX"
+    hubInfoSection:CreateButton({
+        Name = "Discord beitreten",
+        Description = "Oeffnet die NebulaSoftworks Community im Browser.",
+        Callback = function()
+            local clipboardSet = false
+            if typeof(setclipboard) == "function" then
+                clipboardSet = pcall(setclipboard, discordInviteUrl)
+            end
+
+            if clipboardSet then
+                notify("Discord", "Invite-Link wurde in die Zwischenablage kopiert.", "success")
+            else
+                notify("Discord", "Invite-Link: " .. discordInviteUrl, "info")
+            end
+
+            if requestFn then
+                pcall(requestFn, {
+                    Url = discordInviteUrl,
+                    Method = "GET",
+                })
+            end
+        end,
     })
 
     local function formatCredits(credits)
