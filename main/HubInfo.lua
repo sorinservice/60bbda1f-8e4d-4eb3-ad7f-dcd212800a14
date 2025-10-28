@@ -272,21 +272,6 @@ return function(Tab, Aurexis, Window)
         return nil
     end
 
-    local connectionLabelStyle = 2
-    local connectionLabelText = "Supabase Verbindung aktiv - Hub Infos & Feedback werden live synchronisiert."
-    if not isSupabaseConfigured() then
-        connectionLabelStyle = 3
-        connectionLabelText = "Supabase Verbindung inaktiv - Konfiguration im HubInfo-Modul fehlt."
-    elseif not hasExecutorRequest then
-        connectionLabelStyle = 3
-        connectionLabelText = "Supabase Verbindung blockiert - Dein Executor stellt keine http_request Funktion bereit."
-    end
-
-    Tab:CreateLabel({
-        Text = connectionLabelText,
-        Style = connectionLabelStyle,
-    })
-
     ----------------------------------------------------------------
     -- Section: Runtime Performance
     Tab:CreateSection("Runtime Performance")
@@ -300,6 +285,7 @@ return function(Tab, Aurexis, Window)
     local fpsAccumulator = {
         frames = 0,
         delta = 0,
+        sum = 0,
         current = 0,
     }
 
@@ -337,6 +323,10 @@ return function(Tab, Aurexis, Window)
             return
         end
 
+        if networkStatsContainer ~= nil then
+            return
+        end
+
         local ok, net = pcall(function()
             if not Stats then
                 return nil
@@ -345,7 +335,7 @@ return function(Tab, Aurexis, Window)
             if not network then
                 return nil
             end
-            if typeof(network.ServerStatsItem) == "Instance" then
+            if network.ServerStatsItem ~= nil then
                 return network.ServerStatsItem
             end
             if typeof(network.FindFirstChild) == "function" then
@@ -360,7 +350,7 @@ return function(Tab, Aurexis, Window)
     end
 
     local function resolvePerformanceStats()
-        if performanceStatsContainer and performanceStatsContainer.Parent then
+        if performanceStatsContainer ~= nil then
             return
         end
 
@@ -405,6 +395,17 @@ return function(Tab, Aurexis, Window)
             end
         end
 
+        if not item and typeof(networkStatsContainer.GetChildren) == "function" then
+            local normalizedTarget = string.lower((statName or ""):gsub("[%s_/]+", ""))
+            for _, child in ipairs(networkStatsContainer:GetChildren()) do
+                local normalizedName = string.lower(child.Name:gsub("[%s_/]+", ""))
+                if normalizedName == normalizedTarget then
+                    item = child
+                    break
+                end
+            end
+        end
+
         if not item then
             return nil
         end
@@ -431,11 +432,23 @@ return function(Tab, Aurexis, Window)
         if not performanceStatsContainer then
             return nil
         end
-        if typeof(performanceStatsContainer.FindFirstChild) ~= "function" then
-            return nil
+        local item = nil
+
+        if typeof(performanceStatsContainer.FindFirstChild) == "function" then
+            item = performanceStatsContainer:FindFirstChild(statName)
         end
 
-        local item = performanceStatsContainer:FindFirstChild(statName)
+        if not item and typeof(performanceStatsContainer.GetChildren) == "function" then
+            local normalizedTarget = string.lower((statName or ""):gsub("[%s_/]+", ""))
+            for _, child in ipairs(performanceStatsContainer:GetChildren()) do
+                local normalizedName = string.lower(child.Name:gsub("[%s_/]+", ""))
+                if normalizedName == normalizedTarget then
+                    item = child
+                    break
+                end
+            end
+        end
+
         if not item then
             return nil
         end
@@ -465,8 +478,11 @@ return function(Tab, Aurexis, Window)
     end
 
     RunService.RenderStepped:Connect(function(dt)
-        fpsAccumulator.frames += 1
-        fpsAccumulator.delta += dt
+        fpsAccumulator.frames = fpsAccumulator.frames + 1
+        fpsAccumulator.delta = fpsAccumulator.delta + dt
+        if dt > 0 then
+            fpsAccumulator.sum = fpsAccumulator.sum + (1 / dt)
+        end
     end)
 
     local function getPing()
@@ -497,9 +513,14 @@ return function(Tab, Aurexis, Window)
             if value ~= nil then
                 break
             end
-            value = getPerformanceStatValue(name)
-            if value ~= nil then
-                break
+        end
+
+        if value == nil then
+            for _, name in ipairs(aliasList) do
+                value = getPerformanceStatValue(name)
+                if value ~= nil then
+                    break
+                end
             end
         end
 
@@ -536,13 +557,19 @@ return function(Tab, Aurexis, Window)
         while perfParagraph do
             task.wait(1)
 
-            if fpsAccumulator.delta > 0 then
+            local statFps = getPerformanceStatValue("FrameRate")
+            if typeof(statFps) == "number" and statFps > 0 then
+                fpsAccumulator.current = math.floor(statFps + 0.5)
+            elseif fpsAccumulator.frames > 0 and fpsAccumulator.sum > 0 then
+                fpsAccumulator.current = math.floor((fpsAccumulator.sum / fpsAccumulator.frames) + 0.5)
+            elseif fpsAccumulator.delta > 0 then
                 fpsAccumulator.current = math.floor((fpsAccumulator.frames / fpsAccumulator.delta) + 0.5)
             else
                 fpsAccumulator.current = 0
             end
             fpsAccumulator.frames = 0
             fpsAccumulator.delta = 0
+            fpsAccumulator.sum = 0
 
             latestStats.fps = fpsAccumulator.current
             latestStats.ping = getPing()
@@ -693,22 +720,21 @@ return function(Tab, Aurexis, Window)
     -- Section: Hub Informationen (Supabase)
     local hubInfoSection = Tab:CreateSection("Hub Informationen")
 
-    local hubInfoParagraph = hubInfoSection:CreateParagraph({
-        Title = "Version & Infos",
-        Text = isSupabaseConfigured() and "Lade Hub Informationen ..." or "Supabase nicht konfiguriert.",
+    local hubInfoLabel = hubInfoSection:CreateLabel({
+        Text = isSupabaseConfigured() and "Version & Infos werden geladen ..." or "Supabase nicht konfiguriert.",
         Style = 2,
     })
 
-    local creditsParagraph = hubInfoSection:CreateParagraph({
-        Title = "Credits",
-        Text = "NebulaSoftworks - LunaInterfaceSuite\nWyatt - Hub Erweiterungen",
+    local defaultCreditsText = "Credits:\nSorinSoftware Services - Hub Entwicklung\nNebulaSoftworks - LunaInterface Suite"
+    local creditsLabel = hubInfoSection:CreateLabel({
+        Text = defaultCreditsText,
         Style = 2,
     })
 
     local discordInviteUrl = "https://discord.gg/XC5hpQQvMX"
     hubInfoSection:CreateButton({
-        Name = "Discord beitreten",
-        Description = "Oeffnet die NebulaSoftworks Community im Browser.",
+        Name = "SorinSoftware Discord",
+        Description = "Oeffnet die SorinSoftware Services Community.",
         Callback = function()
             local clipboardSet = false
             if typeof(setclipboard) == "function" then
@@ -716,7 +742,7 @@ return function(Tab, Aurexis, Window)
             end
 
             if clipboardSet then
-                notify("Discord", "Invite-Link wurde in die Zwischenablage kopiert.", "success")
+                notify("Discord", "Invite-Link in Zwischenablage kopiert.", "success")
             else
                 notify("Discord", "Invite-Link: " .. discordInviteUrl, "info")
             end
@@ -753,7 +779,7 @@ return function(Tab, Aurexis, Window)
             end
             return table.concat(lines, "\n")
         end
-        return "NebulaSoftworks - LunaInterfaceSuite\nWyatt - Hub Erweiterungen"
+        return "SorinSoftware Services - Hub Entwicklung\nNebulaSoftworks - LunaInterface Suite"
     end
 
     local function loadHubInfo()
@@ -761,20 +787,18 @@ return function(Tab, Aurexis, Window)
             return
         end
 
+        hubInfoLabel:Set("Version & Infos werden geladen ...")
+        creditsLabel:Set(defaultCreditsText)
+
         if not hasExecutorRequest then
-            hubInfoParagraph:Set({
-                Title = "Version & Infos",
-                Text = "Executor bietet keine http_request Funktion. Supabase Daten koennen nicht geladen werden.",
-            })
+            hubInfoLabel:Set("Supabase Daten koennen nicht geladen werden (kein http_request).")
+            creditsLabel:Set(defaultCreditsText)
             return
         end
 
         local tableName = SupabaseConfig.hubInfoTable
         if type(tableName) ~= "string" or tableName == "" then
-            hubInfoParagraph:Set({
-                Title = "Version & Infos",
-                Text = "Ungueltiger Tabellenname. Pruefe SupabaseConfig.hubInfoTable.",
-            })
+            hubInfoLabel:Set("Ungueltiger Tabellenname. Pruefe SupabaseConfig.hubInfoTable.")
             return
         end
 
@@ -788,10 +812,7 @@ return function(Tab, Aurexis, Window)
         })
 
         if not response then
-            hubInfoParagraph:Set({
-                Title = "Version & Infos",
-                Text = "Supabase Anfrage fehlgeschlagen:\n" .. tostring(err),
-            })
+            hubInfoLabel:Set("Supabase Anfrage fehlgeschlagen:\n" .. tostring(err))
             return
         end
 
@@ -806,10 +827,7 @@ return function(Tab, Aurexis, Window)
         end
 
         if type(payload) ~= "table" then
-            hubInfoParagraph:Set({
-                Title = "Version & Infos",
-                Text = "Keine Hub Informationen gefunden.",
-            })
+            hubInfoLabel:Set("Keine Hub Informationen gefunden.")
             return
         end
 
@@ -834,16 +852,10 @@ return function(Tab, Aurexis, Window)
             table.insert(infoLines, "Notizen: " .. tostring(extra))
         end
 
-        hubInfoParagraph:Set({
-            Title = "Version & Infos",
-            Text = table.concat(infoLines, "\n"),
-        })
+        hubInfoLabel:Set(table.concat(infoLines, "\n"))
 
         if payload.credits then
-            creditsParagraph:Set({
-                Title = "Credits",
-                Text = formatCredits(payload.credits),
-            })
+            creditsLabel:Set("Credits:\n" .. formatCredits(payload.credits))
         end
     end
 
