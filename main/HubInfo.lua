@@ -595,26 +595,26 @@ return function(Tab, Aurexis, Window)
     end)
 
     ----------------------------------------------------------------
-    -- Section: Feedback & Ideen
-    Tab:CreateSection("Feedback & Ideen")
+    -- Section: Feedback & Ideas
+    Tab:CreateSection("Feedback & Ideas")
 
     local feedbackHint
     if not isSupabaseConfigured() then
         feedbackHint = Tab:CreateParagraph({
-            Title = "Backend nicht konfiguriert",
-            Text = "Trage Backend URL und anon key im HubInfo-Modul ein, damit Feedback gesendet werden kann.",
+            Title = "Backend not configured",
+            Text = "Add the Supabase URL and anon key in the HubInfo module so feedback can be sent.",
             Style = 3,
         })
     elseif not hasExecutorRequest then
         feedbackHint = Tab:CreateParagraph({
-            Title = "HTTP Support fehlt",
-            Text = "Dein Executor stellt keine http_request Funktion bereit. Feedback kann nicht gesendet werden.",
+            Title = "HTTP support missing",
+            Text = "Your executor does not expose an http_request function. Feedback cannot be sent.",
             Style = 3,
         })
     else
         feedbackHint = Tab:CreateParagraph({
-            Title = "Feedback Status",
-            Text = "Bereit: Eingaben werden an uns weitergeleitet",
+            Title = "Feedback status",
+            Text = "Ready: submissions are forwarded to us.",
             Style = 2,
         })
     end
@@ -624,9 +624,9 @@ return function(Tab, Aurexis, Window)
     local contactText = ""
 
     local feedbackInput = Tab:CreateInput({
-        Name = "Dein Feedback",
-        Description = "Kurzes Feedback zum Hub oder zu Funktionen.",
-        PlaceholderText = "Was sollen wir verbessern?",
+        Name = "Your feedback",
+        Description = "Short feedback about the hub or its features.",
+        PlaceholderText = "What should we improve?",
         MaxCharacters = 300,
         Callback = function(text)
             feedbackText = text
@@ -634,9 +634,9 @@ return function(Tab, Aurexis, Window)
     })
 
     local ideaInput = Tab:CreateInput({
-        Name = "Spielideen",
-        Description = "Schlage Spiele oder Features vor.",
-        PlaceholderText = "Welche Games sollen wir supporten?",
+        Name = "Game ideas",
+        Description = "Suggest games or features.",
+        PlaceholderText = "Which games should we support?",
         MaxCharacters = 200,
         Callback = function(text)
             ideaText = text
@@ -644,9 +644,9 @@ return function(Tab, Aurexis, Window)
     })
 
     local contactInput = Tab:CreateInput({
-        Name = "Kontakt (optional)",
-        Description = "Discord Tag oder andere Kontaktinfo (optional).",
-        PlaceholderText = "z.B. mydiscord#0000",
+        Name = "Contact (optional)",
+        Description = "Discord tag or other contact details (optional).",
+        PlaceholderText = "e.g. mydiscord#0000",
         MaxCharacters = 80,
         Callback = function(text)
             contactText = text
@@ -654,24 +654,24 @@ return function(Tab, Aurexis, Window)
     })
 
     Tab:CreateButton({
-        Name = "Feedback absenden",
-        Description = "Sendet Feedback und Spielideen an uns.",
+        Name = "Submit feedback",
+        Description = "Send feedback and game ideas to us.",
         Callback = function()
             local message = (feedbackText or ""):gsub("^%s+", ""):gsub("%s+$", "")
             local idea = (ideaText or ""):gsub("^%s+", ""):gsub("%s+$", "")
 
             if message == "" and idea == "" then
-                notify("Feedback", "Bitte Feedback oder Spielidee angeben.", "warning")
+                notify("Feedback", "Please provide feedback or a game idea.", "warning")
                 return
             end
 
             if not isSupabaseConfigured() then
-                notify("Feedback", "Backend ist nicht konfiguriert. Passe die Werte an.", "error")
+                notify("Feedback", "Backend is not configured. Update the values.", "error")
                 return
             end
 
             if not hasExecutorRequest then
-                notify("Feedback", "Dein Executor blockiert HTTP-Anfragen (http_request fehlt).", "error")
+                notify("Feedback", "Your executor blocks HTTP requests (http_request missing).", "error")
                 return
             end
 
@@ -696,17 +696,17 @@ return function(Tab, Aurexis, Window)
 
             if not response then
                 warn("[HubInfo] Feedback submission failed:", err)
-                notify("Feedback fehlgeschlagen", "Antwort: " .. tostring(err), "error")
+                notify("Feedback failed", "Response: " .. tostring(err), "error")
                 return
             end
 
             local data = decodeJson(response.Body)
             if data and data.error then
-                notify("Feedback fehlgeschlagen", tostring(data.error), "error")
+                notify("Feedback failed", tostring(data.error), "error")
                 return
             end
 
-            notify("Feedback gesendet", "Vielen Dank! Dein Feedback wurde gespeichert.", "check")
+            notify("Feedback sent", "Thank you! Your feedback was saved.", "check")
             feedbackInput:Set({ CurrentValue = "" })
             ideaInput:Set({ CurrentValue = "" })
             contactInput:Set({ CurrentValue = "" })
@@ -717,17 +717,17 @@ return function(Tab, Aurexis, Window)
     })
 
     ----------------------------------------------------------------
-    -- Section: Hub Informationen (Supabase)
-    local hubInfoSection = Tab:CreateSection("Hub Informationen")
+    -- Section: Hub information (Supabase)
+    local hubInfoSection = Tab:CreateSection("Hub Information")
 
     local function backendStatusText()
         if not isSupabaseConfigured() then
-            return "Supabase nicht konfiguriert."
+            return "Supabase not configured."
         end
         if not hasExecutorRequest then
-            return "HTTP-Funktion des Executors fehlt (kein http_request)."
+            return "Executor HTTP function missing (no http_request)."
         end
-        return "Version & Infos werden geladen ..."
+        return "Loading version & info ..."
     end
 
     local hubInfoParagraph = hubInfoSection:CreateParagraph({
@@ -736,7 +736,7 @@ return function(Tab, Aurexis, Window)
         Style = 2,
     })
 
-    local defaultCreditsText = "SorinSoftware Services - Hub Entwicklung\nNebulaSoftworks - LunaInterface Suite"
+    local defaultCreditsText = "SorinSoftware Services - Hub development\nNebulaSoftworks - LunaInterface Suite"
     local creditsParagraph = hubInfoSection:CreateParagraph({
         Title = "Credits",
         Text = defaultCreditsText,
@@ -746,7 +746,7 @@ return function(Tab, Aurexis, Window)
     local discordInviteUrl = "https://discord.gg/XC5hpQQvMX"
     hubInfoSection:CreateButton({
         Name = "SorinSoftware Discord",
-        Description = "Oeffnet die SorinSoftware Services Community.",
+        Description = "Opens the SorinSoftware Services community.",
         Callback = function()
             local clipboardSet = false
             if typeof(setclipboard) == "function" then
@@ -754,9 +754,9 @@ return function(Tab, Aurexis, Window)
             end
 
             if clipboardSet then
-                notify("Discord", "Invite-Link in Zwischenablage kopiert.", "success")
+                notify("Discord", "Invite link copied to clipboard.", "success")
             else
-                notify("Discord", "Invite-Link: " .. discordInviteUrl, "info")
+                notify("Discord", "Invite link: " .. discordInviteUrl, "info")
             end
 
             if requestFn then
@@ -791,7 +791,7 @@ return function(Tab, Aurexis, Window)
             end
             return table.concat(lines, "\n")
         end
-        return "SorinSoftware Services - Hub Entwicklung\nNebulaSoftworks - LunaInterface Suite"
+        return "SorinSoftware Services - Hub development\nNebulaSoftworks - LunaInterface Suite"
     end
 
     local function loadHubInfo()
@@ -801,7 +801,7 @@ return function(Tab, Aurexis, Window)
 
         hubInfoParagraph:Set({
             Title = "Hub Version",
-            Text = "Version & Infos werden geladen ...",
+            Text = "Loading version & info ...",
         })
         creditsParagraph:Set({
             Title = "Credits",
@@ -811,7 +811,7 @@ return function(Tab, Aurexis, Window)
         if not hasExecutorRequest then
             hubInfoParagraph:Set({
                 Title = "Hub Version",
-                Text = "Backend Daten koennen nicht geladen werden (kein http_request).",
+                Text = "Backend data cannot be loaded (no http_request).",
             })
             creditsParagraph:Set({
                 Title = "Credits",
@@ -824,7 +824,7 @@ return function(Tab, Aurexis, Window)
         if type(tableName) ~= "string" or tableName == "" then
             hubInfoParagraph:Set({
                 Title = "Hub Version",
-                Text = "Ungueltiger Tabellenname. Pruefe SupabaseConfig.hubInfoTable.",
+                Text = "Invalid table name. Check SupabaseConfig.hubInfoTable.",
             })
             return
         end
@@ -841,7 +841,7 @@ return function(Tab, Aurexis, Window)
         if not response then
             hubInfoParagraph:Set({
                 Title = "Hub Version",
-                Text = "Backend Anfrage fehlgeschlagen:\n" .. tostring(err),
+                Text = "Backend request failed:\n" .. tostring(err),
             })
             return
         end
@@ -859,18 +859,18 @@ return function(Tab, Aurexis, Window)
         if type(payload) ~= "table" then
             hubInfoParagraph:Set({
                 Title = "Hub Version",
-                Text = "Keine Hub Informationen gefunden.",
+                Text = "No hub information found.",
             })
             return
         end
 
-        local version = payload.version or payload.hub_version or "unbekannt"
-        local lastUpdate = payload.last_update or payload.updated_at or payload.release_date or "unbekannt"
+        local version = payload.version or payload.hub_version or "unknown"
+        local lastUpdate = payload.last_update or payload.updated_at or payload.release_date or "unknown"
         local extra = payload.notes or payload.details or ""
 
         local infoLines = {
-            "Hub Version: " .. tostring(version),
-            "Letztes Update: " .. tostring(lastUpdate),
+            "Hub version: " .. tostring(version),
+            "Last update: " .. tostring(lastUpdate),
         }
 
         if payload.build or payload.tag then
@@ -882,7 +882,7 @@ return function(Tab, Aurexis, Window)
         end
 
         if extra ~= "" then
-            table.insert(infoLines, "Notizen: " .. tostring(extra))
+            table.insert(infoLines, "Notes: " .. tostring(extra))
         end
 
         hubInfoParagraph:Set({
