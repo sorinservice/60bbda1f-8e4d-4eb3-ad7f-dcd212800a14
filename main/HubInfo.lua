@@ -5,6 +5,8 @@ return function(Tab, Aurexis, Window)
     local RunService = game:GetService("RunService")
     local Stats = game:GetService("Stats")
     local Players = game:GetService("Players")
+    local UserInputService = game:GetService("UserInputService")
+    local Localization = game:GetService("LocalizationService")
 
     local LocalPlayer = Players.LocalPlayer
 
@@ -19,6 +21,7 @@ return function(Tab, Aurexis, Window)
         url = "https://udnvaneupscmrgwutamv.supabase.co",
         anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkbnZhbmV1cHNjbXJnd3V0YW12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NjEyMzAsImV4cCI6MjA3MDEzNzIzMH0.7duKofEtgRarIYDAoMfN7OEkOI_zgkG2WzAXZlxl5J0",
         feedbackFunction = "submit_feedback",
+        telemetryFunction = "report_telemetry",
         hubInfoTable = "hub_metadata",
         hubInfoOrderColumn = "updated_at",
     }
@@ -34,6 +37,35 @@ return function(Tab, Aurexis, Window)
     end
 
     SupabaseConfig.url = sanitizeBaseUrl(SupabaseConfig.url)
+
+    local TelemetryConfig = {
+        enabled = true,
+        functionOverride = nil,
+        maxSamples = 24,
+        cooldownSeconds = 900,
+        notifyCooldownSeconds = 900,
+        lowFpsThreshold = 25,
+        lowFpsDurationSeconds = 8,
+        highPingThreshold = 320,
+        highPingDurationSeconds = 6,
+        highMemoryThreshold = 2800,
+        highMemoryDurationSeconds = 6,
+    }
+
+    local telemetryState = {
+        sessionId = HttpService:GenerateGUID(false),
+        samples = {},
+        lastSentAt = -math.huge,
+        lastNotificationAt = -math.huge,
+        sending = false,
+        counters = {
+            lowFps = 0,
+            highPing = 0,
+            highMemory = 0,
+        },
+    }
+
+    local latestStats
 
     ----------------------------------------------------------------
     -- HTTP helper (supports common exploit request implementations)
@@ -272,6 +304,253 @@ return function(Tab, Aurexis, Window)
         return nil
     end
 
+    local function sanitizeNumber(value)
+        if typeof(value) ~= "number" then
+            return nil
+        end
+        if value ~= value or value == math.huge or value == -math.huge then
+            return nil
+        end
+        return value
+    end
+
+    local function parseStatNumber(value)
+        if typeof(value) == "number" then
+            return sanitizeNumber(value)
+        end
+        if typeof(value) == "string" and value ~= "" then
+            local numeric = tonumber((value:gsub("[^%d%.%-]", "")))
+            return sanitizeNumber(numeric)
+        end
+        return nil
+    end
+
+    local function detectDeviceType()
+        if UserInputService.VREnabled then
+            return "VR"
+        end
+        local hasTouch = UserInputService.TouchEnabled
+        local hasKeyboard = UserInputService.KeyboardEnabled
+        local hasGamepad = UserInputService.GamepadEnabled
+
+        if hasTouch and not hasKeyboard then
+            return "Mobile"
+        end
+        if hasGamepad and not hasKeyboard then
+            return "Console"
+        end
+        return "Desktop"
+    end
+
+    local function computeTelemetryAggregates(samples)
+        local aggregates = {}
+
+        for _, sample in ipairs(samples) do
+            for key, value in pairs(sample) do
+                if typeof(value) == "number" then
+                    local bucket = aggregates[key]
+                    if not bucket then
+                        bucket = {
+                            sum = 0,
+                            count = 0,
+                            min = value,
+                            max = value,
+                        }
+                        aggregates[key] = bucket
+                    end
+                    bucket.sum += value
+                    bucket.count += 1
+                    if value < bucket.min then
+                        bucket.min = value
+                    end
+                    if value > bucket.max then
+                        bucket.max = value
+                    end
+                end
+            end
+        end
+
+        local result = {}
+        for key, bucket in pairs(aggregates) do
+            result[key] = {
+                average = bucket.count > 0 and (bucket.sum / bucket.count) or nil,
+                minimum = bucket.min,
+                maximum = bucket.max,
+            }
+        end
+
+        return result
+    end
+
+    local function buildTelemetryEnvironment()
+        local deviceType = detectDeviceType()
+        local localeId = nil
+        local okLocale, localeValue = pcall(function()
+            return Localization and Localization.RobloxLocaleId
+        end)
+        if okLocale and typeof(localeValue) == "string" and localeValue ~= "" then
+            localeId = localeValue
+        end
+
+        local engineVersion = nil
+        local okVersion, versionValue = pcall(function()
+            return version and version()
+        end)
+        if okVersion and typeof(versionValue) == "string" then
+            engineVersion = versionValue
+        end
+
+        return {
+            place_id = game.PlaceId,
+            game_id = game.GameId,
+            job_id = game.JobId,
+            device = deviceType,
+            locale = localeId,
+            executor = typeof(identifyexecutor) == "function" and identifyexecutor() or "Unknown",
+            is_studio = RunService:IsStudio(),
+            engine_version = engineVersion,
+        }
+    end
+
+    local function shouldCollectTelemetry()
+        if not TelemetryConfig.enabled then
+            return false
+        end
+        if not isSupabaseConfigured() then
+            return false
+        end
+        if not hasExecutorRequest then
+            return false
+        end
+        local functionName = TelemetryConfig.functionOverride or SupabaseConfig.telemetryFunction
+        if type(functionName) ~= "string" or functionName == "" then
+            return false
+        end
+        return true
+    end
+
+    local function currentUnixSeconds()
+        return os.time()
+    end
+
+    local function sendTelemetryReport(issues, latestSample)
+        if telemetryState.sending then
+            return
+        end
+        telemetryState.sending = true
+        telemetryState.lastSentAt = currentUnixSeconds()
+
+        local functionName = TelemetryConfig.functionOverride or SupabaseConfig.telemetryFunction
+        local payload = {
+            event = "auto_performance_report",
+            session_id = telemetryState.sessionId,
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            issues = issues,
+            samples = telemetryState.samples,
+            metrics = {
+                latest = latestSample,
+                aggregates = computeTelemetryAggregates(telemetryState.samples),
+            },
+            stats = latestStats,
+            user = {
+                id = LocalPlayer and LocalPlayer.UserId or nil,
+                username = LocalPlayer and LocalPlayer.Name or nil,
+            },
+            environment = buildTelemetryEnvironment(),
+        }
+
+        task.spawn(function()
+            local response, err = supabaseRequest(
+                "/functions/v1/" .. functionName,
+                "POST",
+                payload
+            )
+
+            if not response then
+                warn("[HubInfo] Telemetry submission failed:", err)
+            else
+                local data = decodeJson(response.Body)
+                if data and data.error then
+                    warn("[HubInfo] Telemetry submission error:", data.error)
+                else
+                    if currentUnixSeconds() - telemetryState.lastNotificationAt >= TelemetryConfig.notifyCooldownSeconds then
+                        telemetryState.lastNotificationAt = currentUnixSeconds()
+                        notify(
+                            "Performance issues detected",
+                            "We have noticed performance issues and have sent them to our backend to improve our service.",
+                            "info"
+                        )
+                    end
+                end
+            end
+
+            telemetryState.samples = {}
+            telemetryState.counters.lowFps = 0
+            telemetryState.counters.highPing = 0
+            telemetryState.counters.highMemory = 0
+            telemetryState.sending = false
+        end)
+    end
+
+    local function processTelemetrySample(memoryText)
+        if not shouldCollectTelemetry() then
+            return
+        end
+
+        local sample = {
+            iso_timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            fps = sanitizeNumber(latestStats.fps),
+            ping_ms = parseStatNumber(latestStats.ping),
+            upload_kbps = parseStatNumber(latestStats.sent),
+            download_kbps = parseStatNumber(latestStats.received),
+            memory_mb = parseStatNumber(memoryText),
+        }
+
+        table.insert(telemetryState.samples, sample)
+        if #telemetryState.samples > TelemetryConfig.maxSamples then
+            table.remove(telemetryState.samples, 1)
+        end
+
+        if sample.fps and sample.fps < TelemetryConfig.lowFpsThreshold then
+            telemetryState.counters.lowFps += 1
+        else
+            telemetryState.counters.lowFps = 0
+        end
+
+        if sample.ping_ms and sample.ping_ms > TelemetryConfig.highPingThreshold then
+            telemetryState.counters.highPing += 1
+        else
+            telemetryState.counters.highPing = 0
+        end
+
+        if sample.memory_mb and sample.memory_mb > TelemetryConfig.highMemoryThreshold then
+            telemetryState.counters.highMemory += 1
+        else
+            telemetryState.counters.highMemory = 0
+        end
+
+        local issues = {}
+        if telemetryState.counters.lowFps >= TelemetryConfig.lowFpsDurationSeconds then
+            table.insert(issues, "low_fps")
+        end
+        if telemetryState.counters.highPing >= TelemetryConfig.highPingDurationSeconds then
+            table.insert(issues, "high_ping")
+        end
+        if telemetryState.counters.highMemory >= TelemetryConfig.highMemoryDurationSeconds then
+            table.insert(issues, "high_memory")
+        end
+
+        if #issues == 0 then
+            return
+        end
+
+        if currentUnixSeconds() - telemetryState.lastSentAt < TelemetryConfig.cooldownSeconds then
+            return
+        end
+
+        sendTelemetryReport(issues, sample)
+    end
+
     ----------------------------------------------------------------
     -- Section: Runtime Performance
     Tab:CreateSection("Runtime Performance")
@@ -289,11 +568,13 @@ return function(Tab, Aurexis, Window)
         current = 0,
     }
 
-    local latestStats = {
+    latestStats = {
         fps = 0,
         ping = "N/A",
         sent = "N/A",
         received = "N/A",
+        memory = "N/A",
+        memory_value = nil,
     }
 
     local NETWORK_STAT_ALIASES = {
@@ -576,12 +857,16 @@ return function(Tab, Aurexis, Window)
             latestStats.sent = getNetworkStat(NETWORK_STAT_ALIASES.upload, "KB/s")
             latestStats.received = getNetworkStat(NETWORK_STAT_ALIASES.download, "KB/s")
 
+            local memoryText = getMemory()
+            latestStats.memory = memoryText
+            latestStats.memory_value = parseStatNumber(memoryText)
+
             local text = table.concat({
                 string.format("FPS: %s", latestStats.fps > 0 and tostring(latestStats.fps) or "N/A"),
                 string.format("Ping: %s", latestStats.ping),
                 string.format("Upload: %s", latestStats.sent),
                 string.format("Download: %s", latestStats.received),
-                string.format("Memory: %s", getMemory()),
+                string.format("Memory: %s", memoryText),
                 string.format("Executor: %s", typeof(identifyexecutor) == "function" and identifyexecutor() or "Unknown"),
             }, "\n")
 
@@ -591,6 +876,8 @@ return function(Tab, Aurexis, Window)
                     Text = text,
                 })
             end)
+
+            processTelemetrySample(memoryText)
         end
     end)
 
