@@ -1,7 +1,7 @@
 local HttpService = game:GetService("HttpService")
 
 -- 1) Load AurexisInterface Libary
-local Aurexis = loadstring(game:HttpGet("https://scripts.sorinservice.online/sorin/aurixinterface.lua"))()
+local Aurexis = loadstring(game:HttpGet("https://scripts.sorinservice.online/library/aurixinterface.lua"))()
 
 -- Safe wrappers for optional API
 local function try(fn, ...)
