@@ -21,7 +21,7 @@ return function(Tab, Aurexis, Window)
         url = "https://udnvaneupscmrgwutamv.supabase.co",
         anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkbnZhbmV1cHNjbXJnd3V0YW12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NjEyMzAsImV4cCI6MjA3MDEzNzIzMH0.7duKofEtgRarIYDAoMfN7OEkOI_zgkG2WzAXZlxl5J0",
         feedbackFunction = "submit_feedback",
-        telemetryFunction = "report_telemetry",
+        telemetryFunction = "telemetry_reports",
         hubInfoTable = "hub_metadata",
         hubInfoOrderColumn = "updated_at",
     }
