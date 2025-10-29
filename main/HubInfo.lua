@@ -42,14 +42,14 @@ return function(Tab, Aurexis, Window)
         enabled = true,
         functionOverride = nil,
         maxSamples = 24,
-        cooldownSeconds = 900,
-        notifyCooldownSeconds = 900,
+        cooldownSeconds = 120,
+        notifyCooldownSeconds = 120,
         lowFpsThreshold = 25,
-        lowFpsDurationSeconds = 8,
-        highPingThreshold = 320,
+        lowFpsDurationSeconds = 4,
+        highPingThreshold = 120,
         highPingDurationSeconds = 6,
-        highMemoryThreshold = 2800,
-        highMemoryDurationSeconds = 6,
+        highMemoryThreshold = 500,
+        highMemoryDurationSeconds = 4,
     }
 
     local telemetryState = {
