@@ -377,9 +377,231 @@ return function(Tab, Aurexis, Window)
                 minimum = bucket.min,
                 maximum = bucket.max,
             }
+    end
+
+    return result
+end
+
+    local function shallowCopy(tbl)
+        if type(tbl) ~= "table" then
+            return {}
+        end
+        local copy = {}
+        for key, value in pairs(tbl) do
+            copy[key] = value
+        end
+        return copy
+    end
+
+    local function describeTelemetryIssue(issueKey)
+        local labels = {
+            low_fps = string.format("frames per second stayed below %d", TelemetryConfig.lowFpsThreshold),
+            high_ping = string.format("network latency exceeded %d ms", TelemetryConfig.highPingThreshold),
+            high_memory = string.format("memory usage exceeded %d MB", TelemetryConfig.highMemoryThreshold),
+        }
+        return labels[issueKey] or tostring(issueKey)
+    end
+
+    local function formatIssueList(issues)
+        local descriptions = {}
+        if type(issues) == "table" then
+            for _, issueKey in ipairs(issues) do
+                table.insert(descriptions, describeTelemetryIssue(issueKey))
+            end
+        end
+        if #descriptions == 0 then
+            return "an unspecified performance deviation"
+        end
+        return table.concat(descriptions, ", ")
+    end
+
+    local function formatSampleSummary(sample)
+        if type(sample) ~= "table" then
+            return "Latest metrics unavailable."
+        end
+        local parts = {}
+        if typeof(sample.fps) == "number" then
+            table.insert(parts, string.format("FPS %.0f", sample.fps))
+        end
+        if typeof(sample.ping_ms) == "number" then
+            table.insert(parts, string.format("Ping %.0f ms", sample.ping_ms))
+        end
+        if typeof(sample.memory_mb) == "number" then
+            table.insert(parts, string.format("Memory %.0f MB", sample.memory_mb))
+        end
+        if typeof(sample.download_kbps) == "number" then
+            table.insert(parts, string.format("Download %.0f KB/s", sample.download_kbps))
+        end
+        if typeof(sample.upload_kbps) == "number" then
+            table.insert(parts, string.format("Upload %.0f KB/s", sample.upload_kbps))
+        end
+        if #parts == 0 then
+            return "Latest metrics unavailable."
+        end
+        return "Latest metrics: " .. table.concat(parts, " | ")
+    end
+
+    local function formatAggregateSummary(aggregates)
+        if type(aggregates) ~= "table" then
+            return nil
+        end
+        local parts = {}
+        local fpsAgg = aggregates.fps
+        if type(fpsAgg) == "table" and typeof(fpsAgg.average) == "number" then
+            table.insert(parts, string.format("FPS avg %.0f (min %.0f, max %.0f)", fpsAgg.average, fpsAgg.minimum or fpsAgg.average, fpsAgg.maximum or fpsAgg.average))
+        end
+        local pingAgg = aggregates.ping_ms
+        if type(pingAgg) == "table" and typeof(pingAgg.average) == "number" then
+            table.insert(parts, string.format("Ping avg %.0f ms", pingAgg.average))
+        end
+        local memoryAgg = aggregates.memory_mb
+        if type(memoryAgg) == "table" and typeof(memoryAgg.maximum) == "number" then
+            table.insert(parts, string.format("Memory peak %.0f MB", memoryAgg.maximum))
+        end
+        if #parts == 0 then
+            return nil
+        end
+        return table.concat(parts, " | ")
+    end
+
+    local function sendTelemetryFollowupNote()
+        if not lastTelemetryContext then
+            notify("Diagnostics follow-up", "No diagnostics report to reference yet.", "warning")
+            return
         end
 
-        return result
+        local comment = (telemetryUserComment or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if comment == "" then
+            notify("Diagnostics follow-up", "Please add a short note before sending.", "warning")
+            return
+        end
+
+        if not isSupabaseConfigured() then
+            notify("Diagnostics follow-up", "Backend is not configured. Update the values.", "error")
+            return
+        end
+        if not hasExecutorRequest then
+            notify("Diagnostics follow-up", "Your executor blocks HTTP requests (http_request missing).", "error")
+            return
+        end
+
+        local context = lastTelemetryContext
+        local issuesText = formatIssueList(context.issues)
+        local sampleSummary = formatSampleSummary(context.sample)
+        local aggregateSummary = formatAggregateSummary(context.aggregates)
+
+        local messageLines = {
+            "[telemetry_follow_up]",
+            "Session: " .. tostring(context.session_id or "unknown"),
+            "Report timestamp: " .. tostring(context.timestamp or "n/a"),
+            "Issues: " .. issuesText,
+            sampleSummary,
+        }
+        if aggregateSummary then
+            table.insert(messageLines, "Aggregates: " .. aggregateSummary)
+        end
+        table.insert(messageLines, "User comment: " .. comment)
+
+        local payload = {
+            message = table.concat(messageLines, "\n"),
+            idea = "",
+            contact = nil,
+            place_id = game.PlaceId,
+            game_id = game.GameId,
+            user_id = LocalPlayer and LocalPlayer.UserId or nil,
+            username = LocalPlayer and LocalPlayer.Name or nil,
+            executor = typeof(identifyexecutor) == "function" and identifyexecutor() or "Unknown",
+            stats = latestStats,
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+        }
+
+        local response, err = supabaseRequest(
+            "/functions/v1/" .. SupabaseConfig.feedbackFunction,
+            "POST",
+            payload
+        )
+
+        if not response then
+            warn("[HubInfo] Telemetry follow-up failed:", err)
+            notify("Follow-up failed", "Response: " .. tostring(err), "error")
+            return
+        end
+
+        local data = decodeJson(response.Body)
+        if data and data.error then
+            notify("Follow-up failed", tostring(data.error), "error")
+            return
+        end
+
+        notify("Follow-up sent", "Thanks! Your note was shared with the developers.", "check")
+        telemetryUserComment = ""
+        if telemetryFeedbackInput and telemetryFeedbackInput.Instance and telemetryFeedbackInput.Instance.InputFrame and telemetryFeedbackInput.Instance.InputFrame.InputBox then
+            telemetryFeedbackInput.Instance.InputFrame.InputBox.Text = ""
+        end
+    end
+
+    local function renderTelemetryFollowup(context)
+        lastTelemetryContext = context
+        telemetryUserComment = ""
+
+        local issuesText = formatIssueList(context.issues)
+        local sampleSummary = formatSampleSummary(context.sample)
+        local aggregateSummary = formatAggregateSummary(context.aggregates)
+
+        local paragraphLines = {
+            string.format("Diagnostics were sent because %s.", issuesText),
+            "This helps us identify stability problems faster.",
+            sampleSummary,
+        }
+        table.insert(paragraphLines, "Report timestamp: " .. tostring(context.timestamp or "n/a"))
+        if aggregateSummary then
+            table.insert(paragraphLines, "Aggregate snapshot: " .. aggregateSummary)
+        end
+        table.insert(paragraphLines, "Let us know below if this behaviour is normal for your setup or only started with SorinHub.")
+
+        local paragraphText = table.concat(paragraphLines, "\n")
+
+        if not telemetrySummaryParagraph then
+            telemetrySummaryParagraph = Tab:CreateParagraph({
+                Title = "Diagnostics shared with SorinHub",
+                Text = paragraphText,
+                Style = 3,
+            })
+        else
+            telemetrySummaryParagraph:Set({
+                Title = "Diagnostics shared with SorinHub",
+                Text = paragraphText,
+            })
+        end
+        if telemetrySummaryParagraph and telemetrySummaryParagraph.SetVisible then
+            telemetrySummaryParagraph:SetVisible(true)
+        end
+
+        if not telemetryFeedbackInput then
+            telemetryFeedbackInput = Tab:CreateInput({
+                Name = "Is this behaviour expected?",
+                Description = "Briefly mention if these slowdowns happen without SorinHub.",
+                PlaceholderText = "e.g. \"Laptop always throttles\" or \"Only since update v0.2\"",
+                MaxCharacters = 200,
+                Callback = function(text)
+                    telemetryUserComment = text
+                end,
+            })
+        end
+        if telemetryFeedbackInput and telemetryFeedbackInput.SetVisible then
+            telemetryFeedbackInput:SetVisible(true)
+        end
+        if telemetryFeedbackInput and telemetryFeedbackInput.Instance and telemetryFeedbackInput.Instance.InputFrame and telemetryFeedbackInput.Instance.InputFrame.InputBox then
+            telemetryFeedbackInput.Instance.InputFrame.InputBox.Text = ""
+        end
+
+        if not telemetryFeedbackButton then
+            telemetryFeedbackButton = Tab:CreateButton({
+                Name = "Send follow-up note",
+                Description = "Tell us if the slowdown feels normal for your setup.",
+                Callback = sendTelemetryFollowupNote,
+            })
+        end
     end
 
     local function buildTelemetryEnvironment()
@@ -441,15 +663,31 @@ return function(Tab, Aurexis, Window)
         telemetryState.lastSentAt = currentUnixSeconds()
 
         local functionName = TelemetryConfig.functionOverride or SupabaseConfig.telemetryFunction
+        local timestampIso = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        local aggregates = computeTelemetryAggregates(telemetryState.samples)
+
+        local issueSnapshot = {}
+        for _, issueKey in ipairs(issues) do
+            table.insert(issueSnapshot, issueKey)
+        end
+
+        local reportContext = {
+            issues = issueSnapshot,
+            sample = shallowCopy(latestSample),
+            aggregates = aggregates,
+            session_id = telemetryState.sessionId,
+            timestamp = timestampIso,
+        }
+
         local payload = {
             event = "auto_performance_report",
             session_id = telemetryState.sessionId,
-            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            timestamp = timestampIso,
             issues = issues,
             samples = telemetryState.samples,
             metrics = {
                 latest = latestSample,
-                aggregates = computeTelemetryAggregates(telemetryState.samples),
+                aggregates = aggregates,
             },
             stats = latestStats,
             user = {
@@ -481,6 +719,7 @@ return function(Tab, Aurexis, Window)
                             "info"
                         )
                     end
+                    renderTelemetryFollowup(reportContext)
                 end
             end
 
@@ -576,6 +815,12 @@ return function(Tab, Aurexis, Window)
         memory = "N/A",
         memory_value = nil,
     }
+
+    local telemetrySummaryParagraph = nil
+    local telemetryFeedbackInput = nil
+    local telemetryFeedbackButton = nil
+    local telemetryUserComment = ""
+    local lastTelemetryContext = nil
 
     local NETWORK_STAT_ALIASES = {
         upload = {
