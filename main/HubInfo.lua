@@ -46,7 +46,7 @@ return function(Tab, Aurexis, Window)
         notifyCooldownSeconds = 1800,
         lowFpsThreshold = 35,
         lowFpsDurationSeconds = 4,
-        highPingThreshold = 80,
+        highPingThreshold = 90,
         highPingDurationSeconds = 8,
         highMemoryThreshold = 1100,
         highMemoryDurationSeconds = 8,
@@ -415,9 +415,16 @@ end
         return table.concat(descriptions, ", ")
     end
 
+    local function joinMetrics(parts)
+        for index, value in ipairs(parts) do
+            parts[index] = tostring(value)
+        end
+        return table.concat(parts, " | ")
+    end
+
     local function formatSampleSummary(sample)
         if type(sample) ~= "table" then
-            return "Latest metrics unavailable."
+            return nil
         end
         local parts = {}
         if typeof(sample.fps) == "number" then
@@ -436,9 +443,9 @@ end
             table.insert(parts, string.format("Upload %.0f KB/s", sample.upload_kbps))
         end
         if #parts == 0 then
-            return "Latest metrics unavailable."
+            return nil
         end
-        return "Latest metrics: " .. table.concat(parts, " | ")
+        return joinMetrics(parts)
     end
 
     local function formatAggregateSummary(aggregates)
@@ -461,7 +468,15 @@ end
         if #parts == 0 then
             return nil
         end
-        return table.concat(parts, " | ")
+        return joinMetrics(parts)
+    end
+
+    local function formatListBlock(title, text)
+        if type(text) ~= "string" or text == "" then
+            return nil
+        end
+        local formatted = "- " .. text:gsub("%s*|%s*", "\n- ")
+        return title .. "\n" .. formatted
     end
 
     local function sendTelemetryFollowupNote()
@@ -495,10 +510,12 @@ end
             "Session: " .. tostring(context.session_id or "unknown"),
             "Report timestamp: " .. tostring(context.timestamp or "n/a"),
             "Issues: " .. issuesText,
-            sampleSummary,
         }
+        if sampleSummary then
+            table.insert(messageLines, "Metrics: " .. sampleSummary)
+        end
         if aggregateSummary then
-            table.insert(messageLines, "Aggregates: " .. aggregateSummary)
+            table.insert(messageLines, "Aggregate snapshot: " .. aggregateSummary)
         end
         table.insert(messageLines, "User comment: " .. comment)
 
@@ -549,14 +566,25 @@ end
         local aggregateSummary = formatAggregateSummary(context.aggregates)
 
         local paragraphLines = {
-            string.format("Diagnostics were sent because %s.", issuesText),
-            "This helps us identify stability problems faster.",
-            sampleSummary,
+            "Why we gathered diagnostics:",
+            "- " .. issuesText .. ".",
+            "",
         }
-        table.insert(paragraphLines, "Report timestamp: " .. tostring(context.timestamp or "n/a"))
-        if aggregateSummary then
-            table.insert(paragraphLines, "Aggregate snapshot: " .. aggregateSummary)
+
+        local metricsBlock = formatListBlock("Latest metrics:", sampleSummary or "")
+        if metricsBlock then
+            table.insert(paragraphLines, metricsBlock)
+            table.insert(paragraphLines, "")
         end
+
+        local aggregateBlock = formatListBlock("Aggregate snapshot:", aggregateSummary or "")
+        if aggregateBlock then
+            table.insert(paragraphLines, aggregateBlock)
+            table.insert(paragraphLines, "")
+        end
+
+        table.insert(paragraphLines, "Report timestamp: " .. tostring(context.timestamp or "n/a"))
+        table.insert(paragraphLines, "")
         table.insert(paragraphLines, "Let us know below if this behaviour is normal for your setup or only started with SorinHub.")
 
         local paragraphText = table.concat(paragraphLines, "\n")
@@ -581,7 +609,7 @@ end
             telemetryFeedbackInput = Tab:CreateInput({
                 Name = "Is this behaviour expected?",
                 Description = "Briefly mention if these slowdowns happen without SorinHub.",
-                PlaceholderText = "e.g. \"Laptop always throttles\" or \"Only since update v0.2\"",
+                PlaceholderText = "e.g. Only happens with SorinHub",
                 MaxCharacters = 200,
                 Callback = function(text)
                     telemetryUserComment = text
