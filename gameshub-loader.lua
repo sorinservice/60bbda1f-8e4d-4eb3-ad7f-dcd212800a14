@@ -98,6 +98,8 @@ attachTab("Hub Info",           TABS.HubInfo,          "info")
 local currentIcon = preCtx and "data_usage" or "_error_outline"
 attachTab(currentGameTitle, TABS.CurrentGame, currentIcon, preCtx)
 
+attachTab("Developer",          TABS.Developer,        "extension")
+
 
 -- Show window now that we’re done
 try(function() Window:SetMinimized(false) end)
