@@ -46,7 +46,7 @@ return function(Tab, Aurexis, Window)
         notifyCooldownSeconds = 1800,
         lowFpsThreshold = 35,
         lowFpsDurationSeconds = 4,
-        highPingThreshold = 90,
+        highPingThreshold = 80,
         highPingDurationSeconds = 8,
         highMemoryThreshold = 1100,
         highMemoryDurationSeconds = 8,
