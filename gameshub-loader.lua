@@ -91,7 +91,7 @@ Window:CreateHomeTab()
 -- 7) Create tabs (now they'll appear already titled & populated)
 attachTab("FE Scripts",         TABS.FEScripts,        "insert_emoticon")
 attachTab("Universal Scripts",  TABS.UniversalScripts, "admin_panel_settings") 
-attachTab("Visuals & Graphics", TABS.VisualsGraphics,  "settings")
+attachTab("Visuals & Graphics", TABS.VisualsGraphics,  "remove_red_eye")
 attachTab("Hub Info",           TABS.HubInfo,          "info")
 
 -- Dynamisches Icon je nach Support
