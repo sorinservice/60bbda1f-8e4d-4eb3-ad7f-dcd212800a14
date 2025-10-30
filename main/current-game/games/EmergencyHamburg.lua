@@ -68,7 +68,7 @@ return function(Tab, Aurexis, Window, ctx)
     Tab:CreateSection("Main Scripts")
     local scripts = {
         { name = "Vortex",   url = "https://vortexsoft.pages.dev/api/vortex.lua", recommended = true },
-        { name = "Nova",     url = "https://novaw.xyz/MainScript.lua", description = "very few features :(" },
+        { name = "Nova",     url = "https://novaw.xyz/MainScript.lua", description = 'Skibidi Owner "Cold" and "Nex" are Kids. Script is also very Bad!' },
         { name = "BeanzHub", url = "https://raw.githubusercontent.com/pid4k/scripts/main/BeanzHub.lua" },
     }
 
