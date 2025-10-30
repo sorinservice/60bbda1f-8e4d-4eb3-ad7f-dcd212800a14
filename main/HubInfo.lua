@@ -58,12 +58,32 @@ return function(Tab, Aurexis, Window)
         lastSentAt = -math.huge,
         lastNotificationAt = -math.huge,
         sending = false,
+        lastReportSignature = nil,
         counters = {
             lowFps = 0,
             highPing = 0,
             highMemory = 0,
         },
     }
+
+    local sharedTelemetryState do
+        local ok, sharedTable = pcall(function()
+            return shared
+        end)
+        if ok and typeof(sharedTable) == "table" then
+            if typeof(sharedTable.AurexisTelemetryLimiter) ~= "table" then
+                sharedTable.AurexisTelemetryLimiter = {}
+            end
+            sharedTelemetryState = sharedTable.AurexisTelemetryLimiter
+        end
+    end
+    if typeof(sharedTelemetryState) ~= "table" then
+        sharedTelemetryState = {}
+    end
+
+    if Window and typeof(Window) == "table" then
+        Window.AurexisTelemetryLimiter = sharedTelemetryState
+    end
 
     local latestStats
 
@@ -450,6 +470,39 @@ end
         return table.concat(descriptions, ", ")
     end
 
+    local function computeReportSignature(issues, sample)
+        local issueTokens = {}
+        if type(issues) == "table" then
+            for _, issueKey in ipairs(issues) do
+                table.insert(issueTokens, tostring(issueKey))
+            end
+        end
+        if #issueTokens > 1 then
+            table.sort(issueTokens)
+        end
+
+        local sampleTokens = {}
+        if type(sample) == "table" then
+            local prioritizedKeys = {"iso_timestamp", "fps", "ping_ms", "memory_mb"}
+            for _, key in ipairs(prioritizedKeys) do
+                local value = sample[key]
+                if value ~= nil then
+                    if typeof(value) == "number" then
+                        table.insert(sampleTokens, string.format("%s=%.2f", key, value))
+                    else
+                        table.insert(sampleTokens, string.format("%s=%s", key, tostring(value)))
+                    end
+                end
+            end
+        end
+
+        local signature = table.concat(issueTokens, ",") .. "|" .. table.concat(sampleTokens, ",")
+        if signature == "|" or signature == "" then
+            return nil
+        end
+        return signature
+    end
+
     local function joinMetrics(parts)
         for index, value in ipairs(parts) do
             parts[index] = tostring(value)
@@ -730,12 +783,33 @@ end
         return os.time()
     end
 
-    local function sendTelemetryReport(issues, latestSample)
+    local function sendTelemetryReport(issues, latestSample, reportSignature)
+        local now = currentUnixSeconds()
+
+        if reportSignature and typeof(sharedTelemetryState) == "table" then
+            local globalLastSentAt = sharedTelemetryState.lastSentAt or -math.huge
+            if sharedTelemetryState.sending and sharedTelemetryState.lastSignature == reportSignature then
+                return
+            end
+            if sharedTelemetryState.lastSignature == reportSignature
+                and now - globalLastSentAt < TelemetryConfig.cooldownSeconds
+            then
+                return
+            end
+            sharedTelemetryState.sending = true
+            sharedTelemetryState.lastSignature = reportSignature
+            sharedTelemetryState.lastSentAt = now
+        end
+
         if telemetryState.sending then
+            if sharedTelemetryState then
+                sharedTelemetryState.sending = false
+            end
             return
         end
         telemetryState.sending = true
-        telemetryState.lastSentAt = currentUnixSeconds()
+        telemetryState.lastSentAt = now
+        telemetryState.lastReportSignature = reportSignature
 
         local functionName = TelemetryConfig.functionOverride or SupabaseConfig.telemetryFunction
         local timestampIso = os.date("!%Y-%m-%dT%H:%M:%SZ")
@@ -795,6 +869,10 @@ end
                     error = tostring(err),
                     details = reportContext,
                 })
+                telemetryState.lastReportSignature = nil
+                if sharedTelemetryState then
+                    sharedTelemetryState.lastSignature = nil
+                end
             else
                 local data = decodeJson(response.Body)
                 if data and data.error then
@@ -805,6 +883,10 @@ end
                         error = tostring(data.error),
                         details = reportContext,
                     })
+                    telemetryState.lastReportSignature = nil
+                    if sharedTelemetryState then
+                        sharedTelemetryState.lastSignature = nil
+                    end
                 else
                     if currentUnixSeconds() - telemetryState.lastNotificationAt >= TelemetryConfig.notifyCooldownSeconds then
                         telemetryState.lastNotificationAt = currentUnixSeconds()
@@ -823,6 +905,9 @@ end
             telemetryState.counters.highPing = 0
             telemetryState.counters.highMemory = 0
             telemetryState.sending = false
+            if sharedTelemetryState then
+                sharedTelemetryState.sending = false
+            end
         end)
     end
 
@@ -878,11 +963,22 @@ end
             return
         end
 
-        if currentUnixSeconds() - telemetryState.lastSentAt < TelemetryConfig.cooldownSeconds then
+        local now = currentUnixSeconds()
+        if now - telemetryState.lastSentAt < TelemetryConfig.cooldownSeconds then
             return
         end
 
-        sendTelemetryReport(issues, sample)
+        local reportSignature = computeReportSignature(issues, sample)
+        if reportSignature and sharedTelemetryState then
+            local globalLastSentAt = sharedTelemetryState.lastSentAt or -math.huge
+            if sharedTelemetryState.lastSignature == reportSignature
+                and now - globalLastSentAt < TelemetryConfig.cooldownSeconds
+            then
+                return
+            end
+        end
+
+        sendTelemetryReport(issues, sample, reportSignature)
     end
 
     ----------------------------------------------------------------
