@@ -60,7 +60,7 @@ return function(Tab, Aurexis, Window, ctx)
     ----------------------------------------------------------------
 
     local scripts = {
-        { name = "Aussie WIRE", url = "https://aussie.productions/script", keyRequired = true },
+        { name = "Aussie WIRE", url = "https://api.luarmor.net/files/v3/loaders/4f5c7bbe546251d81e9d3554b109008f.lua", keyRequired = true },
         { name = "Zaphub",      url = "https://zaphub.xyz/Exec",           keyRequired = true, description = "Good Script | " },
     }
     
