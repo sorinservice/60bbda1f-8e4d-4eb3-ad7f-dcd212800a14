@@ -41,14 +41,14 @@ return function(Tab, Aurexis, Window)
     local TelemetryConfig = {
         enabled = true,
         functionOverride = nil,
-        maxSamples = 3,
-        cooldownSeconds = 1800,
+        maxSamples = 24,
+        cooldownSeconds = 900,
         notifyCooldownSeconds = 1800,
-        lowFpsThreshold = 30,
-        lowFpsDurationSeconds = 5,
-        highPingThreshold = 130,
-        highPingDurationSeconds = 10,
-        highMemoryThreshold = 1200,
+        lowFpsThreshold = 35,
+        lowFpsDurationSeconds = 4,
+        highPingThreshold = 90,
+        highPingDurationSeconds = 8,
+        highMemoryThreshold = 1100,
         highMemoryDurationSeconds = 8,
     }
 
@@ -66,6 +66,41 @@ return function(Tab, Aurexis, Window)
     }
 
     local latestStats
+
+    local function updateBackendStatus(newState, payload)
+        if typeof(Window) ~= "table" then
+            return
+        end
+
+        local status = Window.PerformanceBackendStatus
+        if typeof(status) ~= "table" then
+            status = {}
+            Window.PerformanceBackendStatus = status
+        end
+
+        status.state = newState
+        status.lastUpdated = os.time()
+
+        if payload then
+            if payload.issues ~= nil then
+                status.issues = payload.issues
+            end
+            status.summary = payload.summary
+            status.error = payload.error
+            status.details = payload.details
+        elseif newState == "clear" then
+            status.issues = nil
+            status.summary = nil
+            status.error = nil
+            status.details = nil
+        end
+    end
+
+    updateBackendStatus("clear", {
+        summary = "No diagnostics have been reported.",
+    })
+
+    local runtimeSection
 
     ----------------------------------------------------------------
     -- HTTP helper (supports common exploit request implementations)
@@ -586,11 +621,23 @@ end
         table.insert(paragraphLines, "Report timestamp: " .. tostring(context.timestamp or "n/a"))
         table.insert(paragraphLines, "")
         table.insert(paragraphLines, "Let us know below if this behaviour is normal for your setup or only started with SorinHub.")
+        table.insert(paragraphLines, "You can also monitor the Home tab diagnostics card for a quick status update.")
 
         local paragraphText = table.concat(paragraphLines, "\n")
 
+        updateBackendStatus("issues", {
+            issues = context.issues,
+            summary = issuesText,
+            details = context,
+        })
+
+        local targetSection = runtimeSection
+        if not targetSection or typeof(targetSection.CreateParagraph) ~= "function" then
+            targetSection = Tab
+        end
+
         if not telemetrySummaryParagraph then
-            telemetrySummaryParagraph = Tab:CreateParagraph({
+            telemetrySummaryParagraph = targetSection:CreateParagraph({
                 Title = "Diagnostics shared with SorinHub",
                 Text = paragraphText,
                 Style = 3,
@@ -606,7 +653,7 @@ end
         end
 
         if not telemetryFeedbackInput then
-            telemetryFeedbackInput = Tab:CreateInput({
+            telemetryFeedbackInput = targetSection:CreateInput({
                 Name = "Is this behaviour expected?",
                 Description = "Briefly mention if these slowdowns happen without SorinHub.",
                 PlaceholderText = "e.g. Only happens with SorinHub",
@@ -624,7 +671,7 @@ end
         end
 
         if not telemetryFeedbackButton then
-            telemetryFeedbackButton = Tab:CreateButton({
+            telemetryFeedbackButton = targetSection:CreateButton({
                 Name = "Send follow-up note",
                 Description = "Tell us if the slowdown feels normal for your setup.",
                 Callback = sendTelemetryFollowupNote,
@@ -707,6 +754,14 @@ end
             timestamp = timestampIso,
         }
 
+        local issuesSummary = formatIssueList(issueSnapshot)
+
+        updateBackendStatus("pending", {
+            issues = issueSnapshot,
+            summary = issuesSummary,
+            details = reportContext,
+        })
+
         local payload = {
             event = "auto_performance_report",
             session_id = telemetryState.sessionId,
@@ -734,10 +789,22 @@ end
 
             if not response then
                 warn("[HubInfo] Telemetry submission failed:", err)
+                updateBackendStatus("error", {
+                    issues = issueSnapshot,
+                    summary = issuesSummary,
+                    error = tostring(err),
+                    details = reportContext,
+                })
             else
                 local data = decodeJson(response.Body)
                 if data and data.error then
                     warn("[HubInfo] Telemetry submission error:", data.error)
+                    updateBackendStatus("error", {
+                        issues = issueSnapshot,
+                        summary = issuesSummary,
+                        error = tostring(data.error),
+                        details = reportContext,
+                    })
                 else
                     if currentUnixSeconds() - telemetryState.lastNotificationAt >= TelemetryConfig.notifyCooldownSeconds then
                         telemetryState.lastNotificationAt = currentUnixSeconds()
@@ -820,9 +887,9 @@ end
 
     ----------------------------------------------------------------
     -- Section: Runtime Performance
-    Tab:CreateSection("Runtime Performance")
+    runtimeSection = Tab:CreateSection("Runtime Performance")
 
-    local perfParagraph = Tab:CreateParagraph({
+    local perfParagraph = runtimeSection:CreateParagraph({
         Title = "Environment Stats",
         Text = "Collecting data ...",
         Style = 2,
