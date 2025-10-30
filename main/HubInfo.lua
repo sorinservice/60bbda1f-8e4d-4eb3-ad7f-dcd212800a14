@@ -41,8 +41,8 @@ return function(Tab, Aurexis, Window)
     local TelemetryConfig = {
         enabled = true,
         functionOverride = nil,
-        maxSamples = 24,
-        cooldownSeconds = 900,
+        maxSamples = 3,
+        cooldownSeconds = 1800,
         notifyCooldownSeconds = 1800,
         lowFpsThreshold = 35,
         lowFpsDurationSeconds = 4,
