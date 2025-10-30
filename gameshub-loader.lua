@@ -38,6 +38,7 @@ Aurexis:Notification({ Title="Greetings from SorinHub", Icon="emoji_emotions", I
 
 -- 3) Remote modules
 local TABS = {
+    Developer        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Developer.lua",
     FEScripts        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/FE-Scripts.lua",
     UniversalScripts = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/UniversalScripts.lua",
     CurrentGame      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/game-loader.lua",
