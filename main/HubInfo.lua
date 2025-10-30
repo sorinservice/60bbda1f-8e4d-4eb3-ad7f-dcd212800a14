@@ -42,13 +42,13 @@ return function(Tab, Aurexis, Window)
         enabled = true,
         functionOverride = nil,
         maxSamples = 24,
-        cooldownSeconds = 450,
-        notifyCooldownSeconds = 900,
-        lowFpsThreshold = 25,
+        cooldownSeconds = 900,
+        notifyCooldownSeconds = 1800,
+        lowFpsThreshold = 35,
         lowFpsDurationSeconds = 4,
         highPingThreshold = 90,
         highPingDurationSeconds = 8,
-        highMemoryThreshold = 500,
+        highMemoryThreshold = 1000,
         highMemoryDurationSeconds = 8,
     }
 
