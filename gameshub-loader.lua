@@ -94,12 +94,11 @@ attachTab("FE Scripts",         TABS.FEScripts,        "insert_emoticon")
 attachTab("Universal Scripts",  TABS.UniversalScripts, "admin_panel_settings") 
 attachTab("Visuals & Graphics", TABS.VisualsGraphics,  "remove_red_eye")
 attachTab("Hub Info",           TABS.HubInfo,          "info")
+attachTab("Developer",          TABS.Developer,        "extension")
 
 -- Dynamisches Icon je nach Support
 local currentIcon = preCtx and "data_usage" or "_error_outline"
 attachTab(currentGameTitle, TABS.CurrentGame, currentIcon, preCtx)
-
-attachTab("Developer",          TABS.Developer,        "extension")
 
 
 -- Show window now that we’re done
