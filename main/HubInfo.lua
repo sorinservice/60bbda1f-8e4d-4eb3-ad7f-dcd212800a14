@@ -41,13 +41,13 @@ return function(Tab, Aurexis, Window)
     local TelemetryConfig = {
         enabled = true,
         functionOverride = nil,
-        maxSamples = 24,
+        maxSamples = 6,
         cooldownSeconds = 900,
         notifyCooldownSeconds = 1800,
-        lowFpsThreshold = 35,
-        lowFpsDurationSeconds = 4,
+        lowFpsThreshold = 30,
+        lowFpsDurationSeconds = 5,
         highPingThreshold = 130,
-        highPingDurationSeconds = 8,
+        highPingDurationSeconds = 10,
         highMemoryThreshold = 1200,
         highMemoryDurationSeconds = 8,
     }
