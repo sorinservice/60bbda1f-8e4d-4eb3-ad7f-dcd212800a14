@@ -48,7 +48,7 @@ return function(Tab, Aurexis, Window)
         lowFpsDurationSeconds = 4,
         highPingThreshold = 90,
         highPingDurationSeconds = 8,
-        highMemoryThreshold = 1000,
+        highMemoryThreshold = 1100,
         highMemoryDurationSeconds = 8,
     }
 
