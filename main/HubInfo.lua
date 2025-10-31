@@ -5,8 +5,6 @@ return function(Tab, Aurexis, Window)
     local RunService = game:GetService("RunService")
     local Stats = game:GetService("Stats")
     local Players = game:GetService("Players")
-    local UserInputService = game:GetService("UserInputService")
-    local Localization = game:GetService("LocalizationService")
 
     local LocalPlayer = Players.LocalPlayer
 
@@ -17,13 +15,18 @@ return function(Tab, Aurexis, Window)
     -- feedbackFunction: Edge Function that accepts POST payloads for feedback
     -- hubInfoTable: Table or view that exposes hub metadata (version etc.)
     -- hubInfoOrderColumn: Column used for "latest" ordering (timestamp/id)
+    -- supportedGamesTable: Table used to count supported experiences
+    -- supportedGamesFilter: Optional query fragment (e.g. "is_active=eq.true")
+    -- supportedGamesLimit: Optional limit to cap returned rows when counting
     local SupabaseConfig = {
         url = "https://udnvaneupscmrgwutamv.supabase.co",
         anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkbnZhbmV1cHNjbXJnd3V0YW12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NjEyMzAsImV4cCI6MjA3MDEzNzIzMH0.7duKofEtgRarIYDAoMfN7OEkOI_zgkG2WzAXZlxl5J0",
         feedbackFunction = "submit_feedback",
-        telemetryFunction = "telemetry_reports",
         hubInfoTable = "hub_metadata",
         hubInfoOrderColumn = "updated_at",
+        supportedGamesTable = "games",
+        supportedGamesFilter = "is_active=eq.true",
+        supportedGamesLimit = 1000,
     }
 
     local function sanitizeBaseUrl(url)
@@ -37,90 +40,6 @@ return function(Tab, Aurexis, Window)
     end
 
     SupabaseConfig.url = sanitizeBaseUrl(SupabaseConfig.url)
-
-    local TelemetryConfig = {
-        enabled = true,
-        functionOverride = nil,
-        maxSamples = 3,
-        cooldownSeconds = 1800,
-        notifyCooldownSeconds = 1800,
-        lowFpsThreshold = 35,
-        lowFpsDurationSeconds = 4,
-        highPingThreshold = 150,
-        highPingDurationSeconds = 8,
-        highMemoryThreshold = 1100,
-        highMemoryDurationSeconds = 8,
-    }
-
-    local telemetryState = {
-        sessionId = HttpService:GenerateGUID(false),
-        samples = {},
-        lastSentAt = -math.huge,
-        lastNotificationAt = -math.huge,
-        sending = false,
-        lastReportSignature = nil,
-        counters = {
-            lowFps = 0,
-            highPing = 0,
-            highMemory = 0,
-        },
-    }
-
-    local sharedTelemetryState do
-        local ok, sharedTable = pcall(function()
-            return shared
-        end)
-        if ok and typeof(sharedTable) == "table" then
-            if typeof(sharedTable.AurexisTelemetryLimiter) ~= "table" then
-                sharedTable.AurexisTelemetryLimiter = {}
-            end
-            sharedTelemetryState = sharedTable.AurexisTelemetryLimiter
-        end
-    end
-    if typeof(sharedTelemetryState) ~= "table" then
-        sharedTelemetryState = {}
-    end
-
-    if Window and typeof(Window) == "table" then
-        Window.AurexisTelemetryLimiter = sharedTelemetryState
-    end
-
-    local latestStats
-
-    local function updateBackendStatus(newState, payload)
-        if typeof(Window) ~= "table" then
-            return
-        end
-
-        local status = Window.PerformanceBackendStatus
-        if typeof(status) ~= "table" then
-            status = {}
-            Window.PerformanceBackendStatus = status
-        end
-
-        status.state = newState
-        status.lastUpdated = os.time()
-
-        if payload then
-            if payload.issues ~= nil then
-                status.issues = payload.issues
-            end
-            status.summary = payload.summary
-            status.error = payload.error
-            status.details = payload.details
-        elseif newState == "clear" then
-            status.issues = nil
-            status.summary = nil
-            status.error = nil
-            status.details = nil
-        end
-    end
-
-    updateBackendStatus("clear", {
-        summary = "No diagnostics have been reported.",
-    })
-
-    local runtimeSection
 
     ----------------------------------------------------------------
     -- HTTP helper (supports common exploit request implementations)
@@ -359,633 +278,50 @@ return function(Tab, Aurexis, Window)
         return nil
     end
 
-    local function sanitizeNumber(value)
-        if typeof(value) ~= "number" then
-            return nil
-        end
-        if value ~= value or value == math.huge or value == -math.huge then
-            return nil
-        end
-        return value
-    end
-
-    local function parseStatNumber(value)
-        if typeof(value) == "number" then
-            return sanitizeNumber(value)
-        end
-        if typeof(value) == "string" and value ~= "" then
-            local numeric = tonumber((value:gsub("[^%d%.%-]", "")))
-            return sanitizeNumber(numeric)
-        end
-        return nil
-    end
-
-    local function detectDeviceType()
-        if UserInputService.VREnabled then
-            return "VR"
-        end
-        local hasTouch = UserInputService.TouchEnabled
-        local hasKeyboard = UserInputService.KeyboardEnabled
-        local hasGamepad = UserInputService.GamepadEnabled
-
-        if hasTouch and not hasKeyboard then
-            return "Mobile"
-        end
-        if hasGamepad and not hasKeyboard then
-            return "Console"
-        end
-        return "Desktop"
-    end
-
-    local function computeTelemetryAggregates(samples)
-        local aggregates = {}
-
-        for _, sample in ipairs(samples) do
-            for key, value in pairs(sample) do
-                if typeof(value) == "number" then
-                    local bucket = aggregates[key]
-                    if not bucket then
-                        bucket = {
-                            sum = 0,
-                            count = 0,
-                            min = value,
-                            max = value,
-                        }
-                        aggregates[key] = bucket
-                    end
-                    bucket.sum += value
-                    bucket.count += 1
-                    if value < bucket.min then
-                        bucket.min = value
-                    end
-                    if value > bucket.max then
-                        bucket.max = value
-                    end
-                end
-            end
+    local function fetchSupportedGamesCount()
+        local tableName = SupabaseConfig.supportedGamesTable
+        if type(tableName) ~= "string" or tableName == "" then
+            return nil, "Supported games table not configured"
         end
 
-        local result = {}
-        for key, bucket in pairs(aggregates) do
-            result[key] = {
-                average = bucket.count > 0 and (bucket.sum / bucket.count) or nil,
-                minimum = bucket.min,
-                maximum = bucket.max,
-            }
-    end
+        local queryParts = { "select=id" }
 
-    return result
-end
-
-    local function shallowCopy(tbl)
-        if type(tbl) ~= "table" then
-            return {}
-        end
-        local copy = {}
-        for key, value in pairs(tbl) do
-            copy[key] = value
-        end
-        return copy
-    end
-
-    local function describeTelemetryIssue(issueKey)
-        local labels = {
-            low_fps = string.format("frames per second stayed below %d", TelemetryConfig.lowFpsThreshold),
-            high_ping = string.format("network latency exceeded %d ms", TelemetryConfig.highPingThreshold),
-            high_memory = string.format("memory usage exceeded %d MB", TelemetryConfig.highMemoryThreshold),
-        }
-        return labels[issueKey] or tostring(issueKey)
-    end
-
-    local function formatIssueList(issues)
-        local descriptions = {}
-        if type(issues) == "table" then
-            for _, issueKey in ipairs(issues) do
-                table.insert(descriptions, describeTelemetryIssue(issueKey))
-            end
-        end
-        if #descriptions == 0 then
-            return "an unspecified performance deviation"
-        end
-        return table.concat(descriptions, ", ")
-    end
-
-    local function computeReportSignature(issues, sample)
-        local issueTokens = {}
-        if type(issues) == "table" then
-            for _, issueKey in ipairs(issues) do
-                table.insert(issueTokens, tostring(issueKey))
-            end
-        end
-        if #issueTokens > 1 then
-            table.sort(issueTokens)
+        if type(SupabaseConfig.supportedGamesFilter) == "string" and SupabaseConfig.supportedGamesFilter ~= "" then
+            table.insert(queryParts, SupabaseConfig.supportedGamesFilter)
         end
 
-        local sampleTokens = {}
-        if type(sample) == "table" then
-            local prioritizedKeys = {"iso_timestamp", "fps", "ping_ms", "memory_mb"}
-            for _, key in ipairs(prioritizedKeys) do
-                local value = sample[key]
-                if value ~= nil then
-                    if typeof(value) == "number" then
-                        table.insert(sampleTokens, string.format("%s=%.2f", key, value))
-                    else
-                        table.insert(sampleTokens, string.format("%s=%s", key, tostring(value)))
-                    end
-                end
-            end
+        local limit = tonumber(SupabaseConfig.supportedGamesLimit)
+        if limit and limit > 0 then
+            table.insert(queryParts, "limit=" .. tostring(limit))
         end
 
-        local signature = table.concat(issueTokens, ",") .. "|" .. table.concat(sampleTokens, ",")
-        if signature == "|" or signature == "" then
-            return nil
-        end
-        return signature
-    end
-
-    local function joinMetrics(parts)
-        for index, value in ipairs(parts) do
-            parts[index] = tostring(value)
-        end
-        return table.concat(parts, " | ")
-    end
-
-    local function formatSampleSummary(sample)
-        if type(sample) ~= "table" then
-            return nil
-        end
-        local parts = {}
-        if typeof(sample.fps) == "number" then
-            table.insert(parts, string.format("FPS %.0f", sample.fps))
-        end
-        if typeof(sample.ping_ms) == "number" then
-            table.insert(parts, string.format("Ping %.0f ms", sample.ping_ms))
-        end
-        if typeof(sample.memory_mb) == "number" then
-            table.insert(parts, string.format("Memory %.0f MB", sample.memory_mb))
-        end
-        if typeof(sample.download_kbps) == "number" then
-            table.insert(parts, string.format("Download %.0f KB/s", sample.download_kbps))
-        end
-        if typeof(sample.upload_kbps) == "number" then
-            table.insert(parts, string.format("Upload %.0f KB/s", sample.upload_kbps))
-        end
-        if #parts == 0 then
-            return nil
-        end
-        return joinMetrics(parts)
-    end
-
-    local function formatAggregateSummary(aggregates)
-        if type(aggregates) ~= "table" then
-            return nil
-        end
-        local parts = {}
-        local fpsAgg = aggregates.fps
-        if type(fpsAgg) == "table" and typeof(fpsAgg.average) == "number" then
-            table.insert(parts, string.format("FPS avg %.0f (min %.0f, max %.0f)", fpsAgg.average, fpsAgg.minimum or fpsAgg.average, fpsAgg.maximum or fpsAgg.average))
-        end
-        local pingAgg = aggregates.ping_ms
-        if type(pingAgg) == "table" and typeof(pingAgg.average) == "number" then
-            table.insert(parts, string.format("Ping avg %.0f ms", pingAgg.average))
-        end
-        local memoryAgg = aggregates.memory_mb
-        if type(memoryAgg) == "table" and typeof(memoryAgg.maximum) == "number" then
-            table.insert(parts, string.format("Memory peak %.0f MB", memoryAgg.maximum))
-        end
-        if #parts == 0 then
-            return nil
-        end
-        return joinMetrics(parts)
-    end
-
-    local function formatListBlock(title, text)
-        if type(text) ~= "string" or text == "" then
-            return nil
-        end
-        local formatted = "- " .. text:gsub("%s*|%s*", "\n- ")
-        return title .. "\n" .. formatted
-    end
-
-    local function sendTelemetryFollowupNote()
-        if not lastTelemetryContext then
-            notify("Diagnostics follow-up", "No diagnostics report to reference yet.", "warning")
-            return
-        end
-
-        local comment = (telemetryUserComment or ""):gsub("^%s+", ""):gsub("%s+$", "")
-        if comment == "" then
-            notify("Diagnostics follow-up", "Please add a short note before sending.", "warning")
-            return
-        end
-
-        if not isSupabaseConfigured() then
-            notify("Diagnostics follow-up", "Backend is not configured. Update the values.", "error")
-            return
-        end
-        if not hasExecutorRequest then
-            notify("Diagnostics follow-up", "Your executor blocks HTTP requests (http_request missing).", "error")
-            return
-        end
-
-        local context = lastTelemetryContext
-        local issuesText = formatIssueList(context.issues)
-        local sampleSummary = formatSampleSummary(context.sample)
-        local aggregateSummary = formatAggregateSummary(context.aggregates)
-
-        local messageLines = {
-            "[telemetry_follow_up]",
-            "Session: " .. tostring(context.session_id or "unknown"),
-            "Report timestamp: " .. tostring(context.timestamp or "n/a"),
-            "Issues: " .. issuesText,
-        }
-        if sampleSummary then
-            table.insert(messageLines, "Metrics: " .. sampleSummary)
-        end
-        if aggregateSummary then
-            table.insert(messageLines, "Aggregate snapshot: " .. aggregateSummary)
-        end
-        table.insert(messageLines, "User comment: " .. comment)
-
-        local payload = {
-            message = table.concat(messageLines, "\n"),
-            idea = "",
-            contact = nil,
-            place_id = game.PlaceId,
-            game_id = game.GameId,
-            user_id = LocalPlayer and LocalPlayer.UserId or nil,
-            username = LocalPlayer and LocalPlayer.Name or nil,
-            executor = typeof(identifyexecutor) == "function" and identifyexecutor() or "Unknown",
-            stats = latestStats,
-            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-        }
-
-        local response, err = supabaseRequest(
-            "/functions/v1/" .. SupabaseConfig.feedbackFunction,
-            "POST",
-            payload
-        )
-
+        local path = ("/rest/v1/%s?%s"):format(tableName, table.concat(queryParts, "&"))
+        local response, err = supabaseRequest(path, "GET")
         if not response then
-            warn("[HubInfo] Telemetry follow-up failed:", err)
-            notify("Follow-up failed", "Response: " .. tostring(err), "error")
-            return
+            return nil, err
         end
 
-        local data = decodeJson(response.Body)
-        if data and data.error then
-            notify("Follow-up failed", tostring(data.error), "error")
-            return
+        local records = decodeJson(response.Body)
+        if typeof(records) ~= "table" then
+            return nil, "Invalid response"
         end
 
-        notify("Follow-up sent", "Thanks! Your note was shared with the developers.", "check")
-        telemetryUserComment = ""
-        if telemetryFeedbackInput and telemetryFeedbackInput.Instance and telemetryFeedbackInput.Instance.InputFrame and telemetryFeedbackInput.Instance.InputFrame.InputBox then
-            telemetryFeedbackInput.Instance.InputFrame.InputBox.Text = ""
-        end
-    end
-
-    local function renderTelemetryFollowup(context)
-        lastTelemetryContext = context
-        telemetryUserComment = ""
-
-        local issuesText = formatIssueList(context.issues)
-        local sampleSummary = formatSampleSummary(context.sample)
-        local aggregateSummary = formatAggregateSummary(context.aggregates)
-
-        local paragraphLines = {
-            "Why we gathered diagnostics:",
-            "- " .. issuesText .. ".",
-            "",
-        }
-
-        local metricsBlock = formatListBlock("Latest metrics:", sampleSummary or "")
-        if metricsBlock then
-            table.insert(paragraphLines, metricsBlock)
-            table.insert(paragraphLines, "")
+        if #records > 0 then
+            return #records
         end
 
-        local aggregateBlock = formatListBlock("Aggregate snapshot:", aggregateSummary or "")
-        if aggregateBlock then
-            table.insert(paragraphLines, aggregateBlock)
-            table.insert(paragraphLines, "")
+        local count = 0
+        for _ in pairs(records) do
+            count += 1
         end
-
-        table.insert(paragraphLines, "Report timestamp: " .. tostring(context.timestamp or "n/a"))
-        table.insert(paragraphLines, "")
-        table.insert(paragraphLines, "Let us know below if this behaviour is normal for your setup or only started with SorinHub.")
-        table.insert(paragraphLines, "You can also monitor the Home tab diagnostics card for a quick status update.")
-
-        local paragraphText = table.concat(paragraphLines, "\n")
-
-        updateBackendStatus("issues", {
-            issues = context.issues,
-            summary = issuesText,
-            details = context,
-        })
-
-        local targetSection = runtimeSection
-        if not targetSection or typeof(targetSection.CreateParagraph) ~= "function" then
-            targetSection = Tab
-        end
-
-        if not telemetrySummaryParagraph then
-            telemetrySummaryParagraph = targetSection:CreateParagraph({
-                Title = "Diagnostics shared with SorinHub",
-                Text = paragraphText,
-                Style = 3,
-            })
-        else
-            telemetrySummaryParagraph:Set({
-                Title = "Diagnostics shared with SorinHub",
-                Text = paragraphText,
-            })
-        end
-        if telemetrySummaryParagraph and telemetrySummaryParagraph.SetVisible then
-            telemetrySummaryParagraph:SetVisible(true)
-        end
-
-        if not telemetryFeedbackInput then
-            telemetryFeedbackInput = targetSection:CreateInput({
-                Name = "Is this behaviour expected?",
-                Description = "Briefly mention if these slowdowns happen without SorinHub.",
-                PlaceholderText = "e.g. Only happens with SorinHub",
-                MaxCharacters = 200,
-                Callback = function(text)
-                    telemetryUserComment = text
-                end,
-            })
-        end
-        if telemetryFeedbackInput and telemetryFeedbackInput.SetVisible then
-            telemetryFeedbackInput:SetVisible(true)
-        end
-        if telemetryFeedbackInput and telemetryFeedbackInput.Instance and telemetryFeedbackInput.Instance.InputFrame and telemetryFeedbackInput.Instance.InputFrame.InputBox then
-            telemetryFeedbackInput.Instance.InputFrame.InputBox.Text = ""
-        end
-
-        if not telemetryFeedbackButton then
-            telemetryFeedbackButton = targetSection:CreateButton({
-                Name = "Send follow-up note",
-                Description = "Tell us if the slowdown feels normal for your setup.",
-                Callback = sendTelemetryFollowupNote,
-            })
-        end
-    end
-
-    local function buildTelemetryEnvironment()
-        local deviceType = detectDeviceType()
-        local localeId = nil
-        local okLocale, localeValue = pcall(function()
-            return Localization and Localization.RobloxLocaleId
-        end)
-        if okLocale and typeof(localeValue) == "string" and localeValue ~= "" then
-            localeId = localeValue
-        end
-
-        local engineVersion = nil
-        local okVersion, versionValue = pcall(function()
-            return version and version()
-        end)
-        if okVersion and typeof(versionValue) == "string" then
-            engineVersion = versionValue
-        end
-
-        return {
-            place_id = game.PlaceId,
-            game_id = game.GameId,
-            job_id = game.JobId,
-            device = deviceType,
-            locale = localeId,
-            executor = typeof(identifyexecutor) == "function" and identifyexecutor() or "Unknown",
-            is_studio = RunService:IsStudio(),
-            engine_version = engineVersion,
-        }
-    end
-
-    local function shouldCollectTelemetry()
-        if not TelemetryConfig.enabled then
-            return false
-        end
-        if not isSupabaseConfigured() then
-            return false
-        end
-        if not hasExecutorRequest then
-            return false
-        end
-        local functionName = TelemetryConfig.functionOverride or SupabaseConfig.telemetryFunction
-        if type(functionName) ~= "string" or functionName == "" then
-            return false
-        end
-        return true
-    end
-
-    local function currentUnixSeconds()
-        return os.time()
-    end
-
-    local function sendTelemetryReport(issues, latestSample, reportSignature)
-        local now = currentUnixSeconds()
-
-        if reportSignature and typeof(sharedTelemetryState) == "table" then
-            local globalLastSentAt = sharedTelemetryState.lastSentAt or -math.huge
-            if sharedTelemetryState.sending and sharedTelemetryState.lastSignature == reportSignature then
-                return
-            end
-            if sharedTelemetryState.lastSignature == reportSignature
-                and now - globalLastSentAt < TelemetryConfig.cooldownSeconds
-            then
-                return
-            end
-            sharedTelemetryState.sending = true
-            sharedTelemetryState.lastSignature = reportSignature
-            sharedTelemetryState.lastSentAt = now
-        end
-
-        if telemetryState.sending then
-            if sharedTelemetryState then
-                sharedTelemetryState.sending = false
-            end
-            return
-        end
-        telemetryState.sending = true
-        telemetryState.lastSentAt = now
-        telemetryState.lastReportSignature = reportSignature
-
-        local functionName = TelemetryConfig.functionOverride or SupabaseConfig.telemetryFunction
-        local timestampIso = os.date("!%Y-%m-%dT%H:%M:%SZ")
-        local aggregates = computeTelemetryAggregates(telemetryState.samples)
-
-        local issueSnapshot = {}
-        for _, issueKey in ipairs(issues) do
-            table.insert(issueSnapshot, issueKey)
-        end
-
-        local reportContext = {
-            issues = issueSnapshot,
-            sample = shallowCopy(latestSample),
-            aggregates = aggregates,
-            session_id = telemetryState.sessionId,
-            timestamp = timestampIso,
-        }
-
-        local issuesSummary = formatIssueList(issueSnapshot)
-
-        updateBackendStatus("pending", {
-            issues = issueSnapshot,
-            summary = issuesSummary,
-            details = reportContext,
-        })
-
-        local payload = {
-            event = "auto_performance_report",
-            session_id = telemetryState.sessionId,
-            timestamp = timestampIso,
-            issues = issues,
-            samples = telemetryState.samples,
-            metrics = {
-                latest = latestSample,
-                aggregates = aggregates,
-            },
-            stats = latestStats,
-            user = {
-                id = LocalPlayer and LocalPlayer.UserId or nil,
-                username = LocalPlayer and LocalPlayer.Name or nil,
-            },
-            environment = buildTelemetryEnvironment(),
-        }
-
-        task.spawn(function()
-            local response, err = supabaseRequest(
-                "/functions/v1/" .. functionName,
-                "POST",
-                payload
-            )
-
-            if not response then
-                warn("[HubInfo] Telemetry submission failed:", err)
-                updateBackendStatus("error", {
-                    issues = issueSnapshot,
-                    summary = issuesSummary,
-                    error = tostring(err),
-                    details = reportContext,
-                })
-                telemetryState.lastReportSignature = nil
-                if sharedTelemetryState then
-                    sharedTelemetryState.lastSignature = nil
-                end
-            else
-                local data = decodeJson(response.Body)
-                if data and data.error then
-                    warn("[HubInfo] Telemetry submission error:", data.error)
-                    updateBackendStatus("error", {
-                        issues = issueSnapshot,
-                        summary = issuesSummary,
-                        error = tostring(data.error),
-                        details = reportContext,
-                    })
-                    telemetryState.lastReportSignature = nil
-                    if sharedTelemetryState then
-                        sharedTelemetryState.lastSignature = nil
-                    end
-                else
-                    if currentUnixSeconds() - telemetryState.lastNotificationAt >= TelemetryConfig.notifyCooldownSeconds then
-                        telemetryState.lastNotificationAt = currentUnixSeconds()
-                        notify(
-                            "Performance issues detected",
-                            "We have noticed performance issues and have sent them to our backend to improve our service.",
-                            "info"
-                        )
-                    end
-                    renderTelemetryFollowup(reportContext)
-                end
-            end
-
-            telemetryState.samples = {}
-            telemetryState.counters.lowFps = 0
-            telemetryState.counters.highPing = 0
-            telemetryState.counters.highMemory = 0
-            telemetryState.sending = false
-            if sharedTelemetryState then
-                sharedTelemetryState.sending = false
-            end
-        end)
-    end
-
-    local function processTelemetrySample(memoryText)
-        if not shouldCollectTelemetry() then
-            return
-        end
-
-        local sample = {
-            iso_timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-            fps = sanitizeNumber(latestStats.fps),
-            ping_ms = parseStatNumber(latestStats.ping),
-            upload_kbps = parseStatNumber(latestStats.sent),
-            download_kbps = parseStatNumber(latestStats.received),
-            memory_mb = parseStatNumber(memoryText),
-        }
-
-        table.insert(telemetryState.samples, sample)
-        if #telemetryState.samples > TelemetryConfig.maxSamples then
-            table.remove(telemetryState.samples, 1)
-        end
-
-        if sample.fps and sample.fps < TelemetryConfig.lowFpsThreshold then
-            telemetryState.counters.lowFps += 1
-        else
-            telemetryState.counters.lowFps = 0
-        end
-
-        if sample.ping_ms and sample.ping_ms > TelemetryConfig.highPingThreshold then
-            telemetryState.counters.highPing += 1
-        else
-            telemetryState.counters.highPing = 0
-        end
-
-        if sample.memory_mb and sample.memory_mb > TelemetryConfig.highMemoryThreshold then
-            telemetryState.counters.highMemory += 1
-        else
-            telemetryState.counters.highMemory = 0
-        end
-
-        local issues = {}
-        if telemetryState.counters.lowFps >= TelemetryConfig.lowFpsDurationSeconds then
-            table.insert(issues, "low_fps")
-        end
-        if telemetryState.counters.highPing >= TelemetryConfig.highPingDurationSeconds then
-            table.insert(issues, "high_ping")
-        end
-        if telemetryState.counters.highMemory >= TelemetryConfig.highMemoryDurationSeconds then
-            table.insert(issues, "high_memory")
-        end
-
-        if #issues == 0 then
-            return
-        end
-
-        local now = currentUnixSeconds()
-        if now - telemetryState.lastSentAt < TelemetryConfig.cooldownSeconds then
-            return
-        end
-
-        local reportSignature = computeReportSignature(issues, sample)
-        if reportSignature and sharedTelemetryState then
-            local globalLastSentAt = sharedTelemetryState.lastSentAt or -math.huge
-            if sharedTelemetryState.lastSignature == reportSignature
-                and now - globalLastSentAt < TelemetryConfig.cooldownSeconds
-            then
-                return
-            end
-        end
-
-        sendTelemetryReport(issues, sample, reportSignature)
+        return count
     end
 
     ----------------------------------------------------------------
     -- Section: Runtime Performance
-    runtimeSection = Tab:CreateSection("Runtime Performance")
+    Tab:CreateSection("Runtime Performance")
 
-    local perfParagraph = runtimeSection:CreateParagraph({
+    local perfParagraph = Tab:CreateParagraph({
         Title = "Environment Stats",
         Text = "Collecting data ...",
         Style = 2,
@@ -998,20 +334,12 @@ end
         current = 0,
     }
 
-    latestStats = {
+    local latestStats = {
         fps = 0,
         ping = "N/A",
         sent = "N/A",
         received = "N/A",
-        memory = "N/A",
-        memory_value = nil,
     }
-
-    local telemetrySummaryParagraph = nil
-    local telemetryFeedbackInput = nil
-    local telemetryFeedbackButton = nil
-    local telemetryUserComment = ""
-    local lastTelemetryContext = nil
 
     local NETWORK_STAT_ALIASES = {
         upload = {
@@ -1293,16 +621,12 @@ end
             latestStats.sent = getNetworkStat(NETWORK_STAT_ALIASES.upload, "KB/s")
             latestStats.received = getNetworkStat(NETWORK_STAT_ALIASES.download, "KB/s")
 
-            local memoryText = getMemory()
-            latestStats.memory = memoryText
-            latestStats.memory_value = parseStatNumber(memoryText)
-
             local text = table.concat({
                 string.format("FPS: %s", latestStats.fps > 0 and tostring(latestStats.fps) or "N/A"),
                 string.format("Ping: %s", latestStats.ping),
                 string.format("Upload: %s", latestStats.sent),
                 string.format("Download: %s", latestStats.received),
-                string.format("Memory: %s", memoryText),
+                string.format("Memory: %s", getMemory()),
                 string.format("Executor: %s", typeof(identifyexecutor) == "function" and identifyexecutor() or "Unknown"),
             }, "\n")
 
@@ -1312,8 +636,6 @@ end
                     Text = text,
                 })
             end)
-
-            processTelemetrySample(memoryText)
         end
     end)
 
@@ -1606,6 +928,13 @@ end
 
         if extra ~= "" then
             table.insert(infoLines, "Notes: " .. tostring(extra))
+        end
+
+        local supportedCount, countErr = fetchSupportedGamesCount()
+        if supportedCount then
+            table.insert(infoLines, "Supported games: " .. tostring(supportedCount))
+        elseif countErr then
+            table.insert(infoLines, "Supported games: unavailable")
         end
 
         hubInfoParagraph:Set({
