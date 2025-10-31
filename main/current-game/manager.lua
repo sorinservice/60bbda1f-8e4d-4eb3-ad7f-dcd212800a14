@@ -52,6 +52,11 @@ return {
             name   = "Taxi Boss",
             module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/TaxiBoss.lua",
         },
+
+        [16044264830] = { -- Blade-Ball PlaceID
+            name   = "Blade-Ball",
+            module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/BladeBall.lua",
+        },
         
 },
 }
