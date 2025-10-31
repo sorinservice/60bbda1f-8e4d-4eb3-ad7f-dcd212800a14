@@ -60,7 +60,7 @@ return function(Tab, Aurexis, Window, ctx)
     ----------------------------------------------------------------
 
     local scripts = {
-        { name = "Reaper Hub", url = "https://you.whimper.xyz/reaperhub" description = "⚠️ Don´t verified by us yet." },
+        { name = "Reaper Hub", url = "https://you.whimper.xyz/reaperhub", description = "⚠️ Don´t verified by us yet." },
         { name = "NS Hub", url = "https://pastebin.com/raw/hvJczi0Z", description = "⚠️ Don´t verified by us yet." },
 
     }
