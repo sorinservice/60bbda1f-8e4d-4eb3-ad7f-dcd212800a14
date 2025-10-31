@@ -1,4 +1,4 @@
--- FE-Scripts.lua
+-- UniversalScripts.lua
 return function(Tab, Aurexis, Window, ctx)
 
     local function addScript(displayName, source, opts)
@@ -67,18 +67,43 @@ return function(Tab, Aurexis, Window, ctx)
     end
 
     ----------------------------------------------------------------
-    local scripts = {
-        { name = "FE Fling All", url = "https://pastebin.com/raw/zqyDSUWX" },
+    -- FE Hubs
+    Tab:CreateSection("FE Hubs")
+    local mainScripts = {
+        { name = "Lear Hub", url = "https://raw.githubusercontent.com/Emircxy/Lear/refs/heads/main/Animation", description = "Trolling and more"},
+        { name = "Sus Hub",  url = "https://raw.githubusercontent.com/cnPthPiGon/RamDRuomFirirueieiid8didj/refs/heads/main/Fe%20sus%20hub"}
+
+    }
+    table.sort(mainScripts, function(a, b)
+        return a.name:lower() < b.name:lower()
+    end)
+    for _, script in ipairs(mainScripts) do
+        addScript(script.name, script.url or script.raw, {
+            subtext     = script.subtext,
+            description = script.description,
+            recommended = script.recommended,
+            isRaw       = script.raw ~= nil
+        })
+    end
+
+    ----------------------------------------------------------------
+    -- Other Stuff
+    Tab:CreateSection("Other Stuff")
+    local aimScripts = {
+        { name = "FE Trolling GUI", url = "https://raw.githubusercontent.com/yofriendfromschool1/Sky-Hub/main/FE%20Trolling%20GUI.luau" },
+        { name = "FE Jump Animation", url = "https://raw.githubusercontent.com/SpiderScriptRB/Jump-Animation/refs/heads/main/Only%20R6%20Animation.txt" },
+        { name = "FE Fling all", url = "https://pastebin.com/raw/zqyDSUWX" },
+        { name = "FE Jason Spy", url = "https://pastebin.com/raw/q6kUz9vv" },
         { name = "FE Super Lag", url = "https://pastebin.com/raw/GBmWn4eZ" },
         { name = "Piano Sheet",  url = "https://raw.githubusercontent.com/sorinservice/unlogged-scripts/main/talentless.lua", subtext = "Talentless by HELLOHELLOHELLO012321", recommended = true },
         { name = "Sky Hub",      url = "https://raw.githubusercontent.com/yofriendfromschool1/Sky-Hub/main/SkyHub.txt" },
+        { name = "FE Invisible", url = "https://pastebin.com/raw/3Rnd9rHf"},
+        { name = "Jerk off [R6]", url = "https://pastefy.app/wa3v2Vgm/raw" }
     }
-
-    table.sort(scripts, function(a, b)
+    table.sort(aimScripts, function(a, b)
         return a.name:lower() < b.name:lower()
     end)
-
-    for _, script in ipairs(scripts) do
+    for _, script in ipairs(aimScripts) do
         addScript(script.name, script.url or script.raw, {
             subtext     = script.subtext,
             description = script.description,
