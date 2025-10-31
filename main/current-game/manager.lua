@@ -47,6 +47,11 @@ return {
             name   = "DOORS",
             module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/Doors.lua",
         },
+    
+        [7305309231] = { -- Taxi Boss PlaceID
+            name   = "Taxi Boss",
+            module = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/games/TaxiBoss.lua",
+        },
         
 },
 }
