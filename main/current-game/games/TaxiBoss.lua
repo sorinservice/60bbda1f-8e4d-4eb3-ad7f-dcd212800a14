@@ -60,7 +60,7 @@ return function(Tab, Aurexis, Window, ctx)
     ----------------------------------------------------------------
 
     local scripts = {
-        { name = "Wicik", url = "https://raw.githubusercontent.com/Wic1k/Scripts/refs/heads/main/taxiboss.txt", reccomended = true, description = "| DONT USE TELEPORTS!" },
+        { name = "Wicik", url = "https://raw.githubusercontent.com/Wic1k/Scripts/refs/heads/main/taxiboss.txt", recommended = true, description = "| DONT USE TELEPORTS!" },
 
     }
     
