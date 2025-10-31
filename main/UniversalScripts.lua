@@ -106,12 +106,11 @@ return function(Tab, Aurexis, Window, ctx)
     end
 
     ----------------------------------------------------------------
-    -- Admin Scripts
-    Tab:CreateSection("Admin Scripts")
+    -- ESP Scripts
+    Tab:CreateSection("ESP Scripts")
     local adminScripts = {
-        { name = "Audiologger",     url = "https://raw.githubusercontent.com/infyiff/backup/main/audiologger.lua" },
-        { name = "Infinite Yield",  url = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source", subtext = "FE Admin Script", recommended = true },
-        { name = "Nameless Admin",  url = "https://raw.githubusercontent.com/FilteringEnabled/NamelessAdmin/main/Source" },
+        { name = "Sorin ESP",  url = "https://scripts.sorinservice.online/sorin/ESP.lua", subtext = "Current no UI. Toggle with 'f4'.", recommended = true },
+        { name = "1MS ESP",    url = "https://raw.githubusercontent.com/Veyronxs/Universal/refs/heads/main/1ms_Esp_New", subtext = "Good ESP Script" recommended = true},
     }
     table.sort(adminScripts, function(a, b)
         return a.name:lower() < b.name:lower()
@@ -131,6 +130,7 @@ return function(Tab, Aurexis, Window, ctx)
     local utilityScripts = {
         { name = "Dex Explorer", url = "https://raw.githubusercontent.com/infyiff/backup/main/dex.lua" },
         { name = "Remotespy",    url = "https://raw.githubusercontent.com/infyiff/backup/main/SimpleSpyV3/main.lua" },
+        { name = "Audiologger",     url = "https://raw.githubusercontent.com/infyiff/backup/main/audiologger.lua" },
     }
     table.sort(utilityScripts, function(a, b)
         return a.name:lower() < b.name:lower()
