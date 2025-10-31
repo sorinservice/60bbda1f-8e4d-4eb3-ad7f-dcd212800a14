@@ -62,8 +62,8 @@ return function(Tab, Aurexis, Window, ctx)
     local scripts = {
         { name = "FrostWare",      url = "https://raw.githubusercontent.com/Fsploit/F-R-O-S-T-W-A-R-E/refs/heads/main/Main", keyRequired = true },
         { name = "Plutonium Hub",  url = "https://raw.githubusercontent.com/PawsThePaw/Plutonium.AA/main/Plutonium.Loader.lua", keyRequired = true },
-        { name = "Argon Hub X",    url = "https://raw.githubusercontent.com/AgentX771/ArgonHubX/main/Loader.lua"}
-        { name = "Auto Parry ect", url = "https://raw.githubusercontent.com/yoursvexyyy/VEX-OP/refs/heads/main/bladeball"}
+        { name = "Argon Hub X",    url = "https://raw.githubusercontent.com/AgentX771/ArgonHubX/main/Loader.lua"},
+        { name = "Auto Parry ect", url = "https://raw.githubusercontent.com/yoursvexyyy/VEX-OP/refs/heads/main/bladeball"},
 
     }
     
