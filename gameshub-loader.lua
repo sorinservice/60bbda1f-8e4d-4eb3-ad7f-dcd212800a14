@@ -11,8 +11,8 @@ end
 
 -- 2) Build window (we'll briefly hide it while we preload)
 local Window = Aurexis:CreateWindow({
-    Name = "SorinHub Script Library",
-    Subtitle = "SorinSoftware Services",
+    Name = "SorinHub Pre-Release",
+    Subtitle = "SorinSoftwares",
     LoadingEnabled = true,
     ConfigSettings = { RootFolder = nil, 
     ConfigFolder = "SorinHubConfig" },
@@ -34,17 +34,16 @@ try(function() Window:SetVisible(false) end)
 try(function() Window:SetMinimized(true) end)
 
 -- Quick notify (will show once visible)
-Aurexis:Notification({ Title="Greetings from SorinHub", Icon="emoji_emotions", ImageSource="Material", Content="Have a nice day :D" })
+Aurexis:Notification({ Title="SorinHub", Icon="sparkle", ImageSource="Material", Content="UI initialized successfully." })
 
 -- 3) Remote modules
 local TABS = {
-    --Developer        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/Developer.lua",
     FEScripts        = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/FE-Scripts.lua",
     UniversalScripts = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/UniversalScripts.lua",
+    HubInfo          = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubInfo.lua",
+    VisualsGraphics  = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/visuals_and_graphics.lua",
     CurrentGame      = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/game-loader.lua",
     ManagerCfg       = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/current-game/manager.lua",
-    VisualsGraphics  = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/visuals_and_graphics.lua",
-    HubInfo          = "https://raw.githubusercontent.com/sorinservice/60bbda1f-8e4d-4eb3-ad7f-dcd212800a14/main/main/HubInfo.lua",
 }
 
 -- 4) Helpers (no cachebusters on raw)
@@ -71,14 +70,29 @@ local function attachTab(name, url, icon, ctx)
     end
 end
 
--- 5) Preload manager ONCE, compute ctx & title (by PlaceId only)
+-- 5) Preload manager ONCE, compute ctx & title (PlaceId or UniverseId)
 local currentGameTitle = "Current Game"
 local preCtx = nil do
     local cfg, err = safeRequire(TABS.ManagerCfg)
-    if cfg and type(cfg) == "table" and type(cfg.byPlace) == "table" then
-        local entry = cfg.byPlace[game.PlaceId]
+    if cfg and type(cfg) == "table" then
+        local placeId = game.PlaceId
+        local universeId = game.GameId
+        local entry = nil
+
+        if type(cfg.byPlace) == "table" then
+            entry = cfg.byPlace[placeId]
+        end
+        if not entry and type(cfg.byUniverse) == "table" then
+            entry = cfg.byUniverse[universeId]
+        end
+
         if entry then
-            preCtx = { name = entry.name, module = entry.module, placeId = game.PlaceId }
+            preCtx = {
+                name = entry.name,
+                module = entry.module,
+                placeId = entry.placeId or placeId,
+                universeId = entry.universeId or universeId,
+            }
             if entry.name and #entry.name > 0 then
                 currentGameTitle = entry.name
             end
@@ -90,11 +104,10 @@ end
 Window:CreateHomeTab()
 
 -- 7) Create tabs (now they'll appear already titled & populated)
-attachTab("FE Scripts",         TABS.FEScripts,        "insert_emoticon")
+attachTab("FE Scripts",     TABS.FEScripts,            "insert_emoticon")
 attachTab("Universal Scripts",  TABS.UniversalScripts, "admin_panel_settings") 
-attachTab("Visuals & Graphics", TABS.VisualsGraphics,  "remove_red_eye")
-attachTab("Hub Info",           TABS.HubInfo,          "info")
---attachTab("Developer",          TABS.Developer,        "extension")
+attachTab("Visuals & Graphics",    TABS.VisualsGraphics, "settings")
+attachTab("Hub Info", TABS.HubInfo, "info")
 
 -- Dynamisches Icon je nach Support
 local currentIcon = preCtx and "data_usage" or "_error_outline"
