@@ -110,7 +110,7 @@ return function(Tab, Aurexis, Window, ctx)
     Tab:CreateSection("ESP Scripts")
     local adminScripts = {
         { name = "Sorin ESP",  url = "https://scripts.sorinservice.online/sorin/ESP.lua", subtext = "Current no UI. Toggle with 'f4'.", recommended = true },
-        { name = "1MS ESP",    url = "https://raw.githubusercontent.com/Veyronxs/Universal/refs/heads/main/1ms_Esp_New", subtext = "Good ESP Script" recommended = true},
+        { name = "1MS ESP",    url = "https://raw.githubusercontent.com/Veyronxs/Universal/refs/heads/main/1ms_Esp_New", subtext = "Good ESP Script", recommended = true},
     }
     table.sort(adminScripts, function(a, b)
         return a.name:lower() < b.name:lower()
