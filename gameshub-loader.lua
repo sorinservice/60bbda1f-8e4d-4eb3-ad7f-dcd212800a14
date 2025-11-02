@@ -16,25 +16,24 @@ local Window = Aurexis:CreateWindow({
     LoadingEnabled = true,
     ConfigSettings = { RootFolder = nil, 
     ConfigFolder = "SorinHubConfig" },
-    KeySystem = false,
+    KeySystem = true,
         
---[[    KeySettings = { Title='SorinHub Key = SorinScriptHub', 
-    Subtitle="Key System", 
+    KeySettings = { Title='SorinHub Key = Via Linkvertise', 
+    Subtitle="Key valid for 1 week [New key on 11/09/25]", 
     Note="Enter your key", 
     SaveInRoot=false, 
     SaveKey=true, 
-    Key={"SorinScriptHub", "FetterHurensohn", "SorinHub"}, 
+    Key={"SorinScriptHub", "FetterHurensohn", "R7X4L2G9TP"}, 
     SecondAction={Enabled=true,
     Type="Link",
-    Parameter="https://discord.gg/XC5hpQQvMX"} }
-]]--
+    Parameter="https://link-target.net/1345492/beXhuwI1grD2"} }
 })
 -- try to hide while we fetch (if supported)
 try(function() Window:SetVisible(false) end)
 try(function() Window:SetMinimized(true) end)
 
 -- Quick notify (will show once visible)
-Aurexis:Notification({ Title="SorinHub", Icon="sparkle", ImageSource="Material", Content="UI initialized successfully." })
+Aurexis:Notification({ Title="Sorin Script Hub", Icon="sparkle", ImageSource="Material", Content="Have A Nice Day :D" })
 
 -- 3) Remote modules
 local TABS = {
