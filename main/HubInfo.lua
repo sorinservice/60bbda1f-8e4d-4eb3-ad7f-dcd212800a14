@@ -50,11 +50,11 @@ local Localization = game:GetService("LocalizationService")
         maxSamples = 3,
         cooldownSeconds = 1800,
         notifyCooldownSeconds = 1800,
-        lowFpsThreshold = 35,
+        lowFpsThreshold = 20,
         lowFpsDurationSeconds = 4,
-        highPingThreshold = 90,
+        highPingThreshold = 140,
         highPingDurationSeconds = 8,
-        highMemoryThreshold = 1100,
+        highMemoryThreshold = 1500,
         highMemoryDurationSeconds = 8,
     }
 
