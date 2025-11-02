@@ -27,8 +27,8 @@ local Window = Aurexis:CreateWindow({
     SecondAction={Enabled=true,
     Type="Link",
     Parameter="https://discord.gg/XC5hpQQvMX"} }
-})
 ]]--
+})
 -- try to hide while we fetch (if supported)
 try(function() Window:SetVisible(false) end)
 try(function() Window:SetMinimized(true) end)
